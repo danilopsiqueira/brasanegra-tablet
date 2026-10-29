@@ -5,12 +5,12 @@ Cardápio para os clientes consultarem no tablet da mesa.
 ## Como o cliente usa
 
 1. **Boas-vindas**: ecrã com brasas a subir e um botão grande "Toque para ver o cardápio".
-2. **Início que abre o apetite**: destaque "Da brasa para a sua mesa", a fila "Saídos da brasa"
-   com as carnes, e as categorias com foto (mais "Avalie-nos").
+2. **Início simples**: a fila "Saídos da brasa" com as carnes em foto grande e, por baixo,
+   as categorias com foto (mais "Avalie-nos").
 3. **Pratos**: cada prato com foto e preço. Tocar no prato abre-o em grande
    (descrição, o que acompanha, preço e uma sugestão de vinho); deslizar passa ao seguinte.
    "Ver em grande" mostra a foto no ecrã inteiro.
-4. **A minha escolha**: o botão **+ Juntar** guarda o prato numa lista, com quantidades
+4. **A minha escolha**: o botão **+** ao lado do preço guarda o prato numa lista, com quantidades
    e total estimado. No fim, o cliente mostra a lista ao empregado.
 
 Também:

@@ -162,7 +162,7 @@ function refreshChoiceUi(bump = false) {
     card.classList.toggle("is-chosen", qty > 0);
     const button = card.querySelector(".product__add");
     button.classList.toggle("is-chosen", qty > 0);
-    button.innerHTML = qty > 0 ? `✓ ${qty} na escolha` : `${plusIcon}Juntar`;
+    button.innerHTML = qty > 0 ? String(qty) : plusIcon;
     button.setAttribute("aria-label", qty > 0 ? `${qty} na sua escolha, juntar mais um` : "Juntar à minha escolha");
   });
 
@@ -205,8 +205,7 @@ function buildHome() {
     image.alt = "";
     image.decoding = "async";
     const text = el("span", "category-tile__text");
-    const count = categoryItems(category).length;
-    text.append(el("span", "category-tile__name", category.name), el("span", "category-tile__meta", `${count} opções`));
+    text.append(el("span", "category-tile__name", category.name));
     tile.append(image, text);
     tile.addEventListener("click", () => openCategory(category));
     categoryGrid.appendChild(tile);
@@ -278,10 +277,9 @@ function productCard(item) {
     frame.appendChild(image);
     card.appendChild(frame);
     const caption = el("span", "product__caption");
-    const line = el("span", "product__line");
-    line.append(el("span", "product__name", item.name), el("span", "product__price", priceText(item)));
-    caption.appendChild(line);
-    if (item.desc) caption.appendChild(el("span", "product__desc", item.desc));
+    const text = el("span", "product__text");
+    text.append(el("span", "product__name", item.name), el("span", "product__price", priceText(item)));
+    caption.appendChild(text);
     card.appendChild(caption);
   } else {
     card.classList.add("product--text");
@@ -294,12 +292,12 @@ function productCard(item) {
 
   const add = el("span", "product__add");
   add.setAttribute("role", "button");
-  add.innerHTML = `${plusIcon}Juntar`;
+  add.innerHTML = plusIcon;
   add.addEventListener("click", (event) => {
     event.stopPropagation();
     addOne(item);
   });
-  card.appendChild(add);
+  (card.querySelector(".product__caption") || card).appendChild(add);
 
   card.addEventListener("click", () => openDetail(item));
   return card;
@@ -311,14 +309,9 @@ function openCategory(category) {
   categoryContent.classList.toggle("category__content--large", category.id === "carnes");
 
   const head = el("div", "category__head");
-  const cover = el("img", "category__cover");
-  cover.src = `assets/capas/${category.cover}`;
-  cover.alt = "";
-  const headText = el("div", "category__head-text");
-  headText.append(el("h2", "category__title", category.name), el("p", "category__count", `${categoryItems(category).length} opções`));
-  head.append(cover, headText);
+  head.appendChild(el("h2", "category__title", category.name));
+  if (category.note) head.appendChild(el("p", "note", category.note));
   categoryContent.appendChild(head);
-  if (category.note) categoryContent.appendChild(el("p", "note", category.note));
 
   category.sections.forEach((section) => {
     const block = el("section", "section");
@@ -391,7 +384,8 @@ function renderDetail() {
     image.alt = item.name;
     const zoom = el("button", "detail__zoom");
     zoom.type = "button";
-    zoom.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>Ver em grande';
+    zoom.setAttribute("aria-label", "Ver a foto em grande");
+    zoom.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>';
     media.append(image, zoom);
     media.onclick = () => openPhoto(item);
   } else {
@@ -426,7 +420,7 @@ function renderDetail() {
     thumb.src = photoUrl(wine);
     thumb.alt = "";
     const text = el("span", "pairing__text");
-    text.append(el("span", "pairing__label", "Fica perfeito com"), el("span", "pairing__name", wine.name), el("span", "pairing__price", priceText(wine)));
+    text.append(el("span", "pairing__label", "Combina com"), el("span", "pairing__name", wine.name), el("span", "pairing__price", priceText(wine)));
     button.append(thumb, text);
     button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>');
     button.addEventListener("click", () => openDetail(wine));
