@@ -47,6 +47,8 @@ Tudo está em **`menu-data.js`**:
 - Algumas fotos limpas foram obtidas apagando o texto das imagens do Canva (copos de vinho,
   charutos, pratos executivos…). Se notar alguma mancha, troque por uma foto nova.
 - As fotos levaram um tratamento de cor (mais quentes, com mais contraste e nitidez).
+  As carnes têm um tratamento próprio: vermelhos e dourados mais ricos, mais relevo
+  na crosta e nas marcas da grelha, brilho nos sucos e margens escurecidas.
   Fotos novas que acrescentar entram como estão.
 - `assets/fotos/hd/` tem versões em alta resolução (1200 px), usadas no detalhe e no ecrã
   inteiro. Se uma foto não tiver versão HD, usa-se a normal automaticamente.

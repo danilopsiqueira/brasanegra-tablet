@@ -2,8 +2,8 @@
 // Paginas/codigo: tenta sempre a versao mais recente; sem rede usa a guardada.
 // Imagens: mostra logo a guardada e atualiza-a em segundo plano.
 
-const SHELL_CACHE = "brasa-shell-v9";
-const IMAGE_CACHE = "brasa-images-v2";
+const SHELL_CACHE = "brasa-shell-v10";
+const IMAGE_CACHE = "brasa-images-v3";
 const SHELL_FILES = ["./", "index.html", "fonts.css", "style.css", "menu-data.js", "assets/fotos/hd/lista.js", "script.js", "manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
