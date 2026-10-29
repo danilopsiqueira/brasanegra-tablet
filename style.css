@@ -1203,7 +1203,7 @@ img {
   gap: 14px;
   min-height: 0;
   overflow-y: auto;
-  padding: 40px 36px 30px;
+  padding: 40px 36px 0;
 }
 
 .detail__section,
@@ -1293,9 +1293,14 @@ img {
   color: var(--muted);
 }
 
+/* O botao principal fica sempre visivel no fundo do detalhe. */
 .detail__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   margin-top: auto;
-  padding-top: 8px;
+  padding: 12px 0 24px;
+  background: linear-gradient(180deg, transparent, var(--bg) 14px);
 }
 
 .big-button {
@@ -1590,7 +1595,7 @@ img {
 
 .toast {
   position: absolute;
-  top: calc(max(12px, env(safe-area-inset-top)) + 70px);
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + 76px);
   left: 50%;
   z-index: 40;
   max-width: calc(100% - 40px);
@@ -1602,13 +1607,25 @@ img {
   font-weight: 600;
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -10px);
+  transform: translate(-50%, 10px);
   transition: opacity 200ms ease, transform 200ms ease;
 }
 
 .toast.is-visible {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+/* ---------- Tablet deitado ---------- */
+
+@media (min-aspect-ratio: 1/1) {
+  .feature-card {
+    flex-basis: clamp(200px, 21vw, 280px);
+  }
+
+  .feature-card img {
+    aspect-ratio: 1;
+  }
 }
 
 /* ---------- Tablet na vertical ---------- */
@@ -1635,7 +1652,7 @@ img {
   }
 
   .detail__info {
-    padding: 28px 28px 24px;
+    padding: 28px 28px 0;
   }
 }
 
@@ -1705,7 +1722,45 @@ img {
   }
 
   .detail__info {
-    padding: 22px 20px;
+    padding: 20px 20px 0;
+  }
+
+  /* Telemovel: o prato abre no ecra todo. */
+  #detail.overlay {
+    padding: 0;
+  }
+
+  .detail {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .detail__media img {
+    max-height: 40vh;
+    aspect-ratio: 4 / 3;
+  }
+
+  .detail__nav {
+    top: 20vh;
+  }
+
+  .detail .close-button {
+    top: max(14px, env(safe-area-inset-top));
+  }
+
+  .detail__name {
+    font-size: 30px;
+  }
+
+  .detail__desc {
+    font-size: 17px;
+  }
+
+  .detail__actions {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
   }
 
   .list-bar {

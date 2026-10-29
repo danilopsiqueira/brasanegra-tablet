@@ -140,7 +140,8 @@ function setQuantity(item, qty) {
 function addOne(item) {
   const qty = (choice.get(item.id) || 0) + 1;
   setQuantity(item, qty);
-  showToast(qty > 1 ? `${item.name}: ${qty} na sua escolha` : `${item.name} foi para a sua escolha`);
+  // Com o prato aberto, o proprio botao ja mostra a quantidade.
+  if (detailOverlay.hidden) showToast(qty > 1 ? `${item.name}: ${qty} na sua escolha` : `${item.name} foi para a sua escolha`);
 }
 
 function refreshChoiceUi(bump = false) {
@@ -416,6 +417,7 @@ function openCategory(category, asLayer = false) {
 
 function openDetail(item) {
   if (detailOverlay.hidden) pushLayer("detail");
+  toast.classList.remove("is-visible");
   detailItems = categoryItems(item.category);
   detailIndex = detailItems.indexOf(item);
   $(".detail").classList.remove("is-sliding");
@@ -576,6 +578,7 @@ photoViewer.addEventListener("click", goBack);
 function openList() {
   if (!listOverlay.hidden) return;
   pushLayer("list");
+  toast.classList.remove("is-visible");
   clearConfirm = false;
   listOverlay.hidden = false;
   renderList();

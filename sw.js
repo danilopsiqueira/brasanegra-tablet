@@ -2,7 +2,7 @@
 // Paginas/codigo: tenta sempre a versao mais recente; sem rede usa a guardada.
 // Imagens: mostra logo a guardada e atualiza-a em segundo plano.
 
-const SHELL_CACHE = "brasa-shell-v7";
+const SHELL_CACHE = "brasa-shell-v8";
 const IMAGE_CACHE = "brasa-images-v2";
 const SHELL_FILES = ["./", "index.html", "fonts.css", "style.css", "menu-data.js", "script.js", "manifest.webmanifest"];
 
