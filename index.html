@@ -190,8 +190,21 @@
 
       <!-- Foto em ecra inteiro -->
       <div id="photo-viewer" class="photo-viewer" role="dialog" aria-modal="true" aria-label="Foto em grande" hidden>
-        <img id="photo-viewer-image" alt="">
-        <p class="photo-viewer__caption" id="photo-viewer-caption"></p>
+        <div class="photo-viewer__stage" id="photo-viewer-stage">
+          <img id="photo-viewer-image" alt="" draggable="false">
+        </div>
+        <div class="photo-viewer__bar">
+          <button class="photo-viewer__nav" type="button" data-action="photo-prev" aria-label="Foto anterior">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <div class="photo-viewer__text">
+            <p class="photo-viewer__caption" id="photo-viewer-caption"></p>
+            <p class="photo-viewer__hint">Dois toques ou dois dedos para ampliar</p>
+          </div>
+          <button class="photo-viewer__nav" type="button" data-action="photo-next" aria-label="Foto seguinte">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
         <button class="close-button" type="button" data-action="close-photo" aria-label="Fechar">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>

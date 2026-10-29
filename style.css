@@ -1122,8 +1122,9 @@ img {
 .detail {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  width: min(1100px, 100%);
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  width: min(1200px, 100%);
+  height: min(720px, 100%);
   max-height: 100%;
   overflow: hidden;
   border-radius: 20px;
@@ -1409,7 +1410,7 @@ img {
 }
 
 .detail__nav--next {
-  left: calc(56.5% - 58px);
+  left: calc(60% - 58px);
 }
 
 .detail__nav:disabled {
@@ -1567,28 +1568,86 @@ img {
   position: absolute;
   inset: 0;
   z-index: 30;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  place-items: center;
-  padding: max(20px, env(safe-area-inset-top)) var(--gutter) max(20px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
   background: #000;
   animation: fade-in 200ms ease;
-  cursor: zoom-out;
 }
 
-.photo-viewer img {
+.photo-viewer__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.photo-viewer__stage img {
+  display: block;
   width: 100%;
   height: 100%;
-  min-height: 0;
   object-fit: contain;
+  transform-origin: 0 0;
+  user-select: none;
+}
+
+.photo-viewer__stage img.is-animating {
+  transition: transform 250ms ease;
+}
+
+.photo-viewer__bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px var(--gutter) max(18px, env(safe-area-inset-bottom));
+}
+
+.photo-viewer__text {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
 }
 
 .photo-viewer__caption {
-  margin-top: 14px;
-  color: var(--text);
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 500;
-  text-align: center;
+}
+
+.photo-viewer__hint {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.photo-viewer.is-zoomed .photo-viewer__hint {
+  visibility: hidden;
+}
+
+.photo-viewer__nav {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--text);
+}
+
+.photo-viewer__nav svg {
+  width: 24px;
+  height: 24px;
+}
+
+.photo-viewer__nav:disabled {
+  opacity: 0.25;
+}
+
+.photo-viewer .close-button {
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  width: 56px;
+  height: 56px;
 }
 
 /* Aviso rapido */
@@ -1635,6 +1694,7 @@ img {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr);
     width: min(720px, 100%);
+    height: auto;
   }
 
   .detail__media img {

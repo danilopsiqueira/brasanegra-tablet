@@ -63,6 +63,21 @@ function photoUrl(item) {
   return item.photo.includes("/") ? `assets/${item.photo}` : `assets/produtos/${item.photo}`;
 }
 
+// Versao em alta resolucao (so para o detalhe e o ecra inteiro).
+function hdPhotoUrl(item) {
+  if (!item.photo || !item.photo.startsWith("fotos/")) return photoUrl(item);
+  return `assets/fotos/hd/${item.photo.slice("fotos/".length)}`;
+}
+
+// Mostra a foto em alta resolucao; se ainda nao existir, usa a normal.
+function setPhoto(image, item) {
+  image.onerror = () => {
+    image.onerror = null;
+    image.src = photoUrl(item);
+  };
+  image.src = hdPhotoUrl(item);
+}
+
 function formatPrice(item) {
   return priceFormat.format(item.price);
 }
@@ -439,7 +454,7 @@ function renderDetail() {
   const url = photoUrl(item);
   if (url) {
     const image = el("img", "detail__photo");
-    image.src = url;
+    setPhoto(image, item);
     image.alt = item.name;
     const zoom = el("button", "detail__zoom");
     zoom.type = "button";
@@ -559,19 +574,148 @@ $(".detail").addEventListener("touchend", (event) => {
 
 const photoViewer = $("#photo-viewer");
 
+const viewerStage = $("#photo-viewer-stage");
+const viewerImage = $("#photo-viewer-image");
+let viewerItems = [];
+let viewerIndex = 0;
+const view = { scale: 1, x: 0, y: 0 };
+
 function openPhoto(item) {
   pushLayer("photo");
-  $("#photo-viewer-image").src = photoUrl(item);
-  $("#photo-viewer-image").alt = item.name;
-  $("#photo-viewer-caption").textContent = `${item.name} · ${priceText(item)}`;
+  viewerItems = categoryItems(item.category).filter((other) => other.photo);
+  viewerIndex = Math.max(0, viewerItems.indexOf(item));
   photoViewer.hidden = false;
+  showViewerPhoto();
+}
+
+function showViewerPhoto() {
+  const item = viewerItems[viewerIndex];
+  resetView(false);
+  setPhoto(viewerImage, item);
+  viewerImage.alt = item.name;
+  $("#photo-viewer-caption").textContent = `${item.name} · ${priceText(item)}`;
+  photoViewer.querySelector('[data-action="photo-prev"]').disabled = viewerIndex === 0;
+  photoViewer.querySelector('[data-action="photo-next"]').disabled = viewerIndex === viewerItems.length - 1;
+}
+
+function movePhoto(step) {
+  const next = viewerIndex + step;
+  if (next < 0 || next >= viewerItems.length) return;
+  viewerIndex = next;
+  showViewerPhoto();
 }
 
 function closePhoto() {
   photoViewer.hidden = true;
 }
 
-photoViewer.addEventListener("click", goBack);
+// Ampliar: dois toques, dois dedos, e arrastar quando ampliado.
+function applyView(animate) {
+  const width = viewerStage.clientWidth;
+  const height = viewerStage.clientHeight;
+  view.scale = Math.min(4, Math.max(1, view.scale));
+  view.x = Math.min(0, Math.max(width - width * view.scale, view.x));
+  view.y = Math.min(0, Math.max(height - height * view.scale, view.y));
+  viewerImage.classList.toggle("is-animating", animate);
+  viewerImage.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+  photoViewer.classList.toggle("is-zoomed", view.scale > 1.01);
+}
+
+function resetView(animate = true) {
+  view.scale = 1;
+  view.x = 0;
+  view.y = 0;
+  applyView(animate);
+}
+
+function zoomAt(scale, px, py, animate) {
+  const ratio = Math.min(4, Math.max(1, scale)) / view.scale;
+  view.x = px - (px - view.x) * ratio;
+  view.y = py - (py - view.y) * ratio;
+  view.scale *= ratio;
+  applyView(animate);
+}
+
+function stagePoint(clientX, clientY) {
+  const rect = viewerStage.getBoundingClientRect();
+  return { x: clientX - rect.left, y: clientY - rect.top };
+}
+
+function toggleZoom(clientX, clientY) {
+  if (view.scale > 1.01) {
+    resetView(true);
+  } else {
+    const point = stagePoint(clientX, clientY);
+    zoomAt(2.5, point.x, point.y, true);
+  }
+}
+
+const touch = { mode: null, startX: 0, startY: 0, lastX: 0, lastY: 0, distance: 0, scale: 1, lastTap: 0, lastTouchEnd: 0, moved: false };
+
+viewerStage.addEventListener(
+  "touchstart",
+  (event) => {
+    const [a, b] = event.touches;
+    if (b) {
+      touch.mode = "pinch";
+      touch.distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1;
+      touch.scale = view.scale;
+    } else {
+      touch.mode = view.scale > 1.01 ? "pan" : "swipe";
+      touch.startX = touch.lastX = a.clientX;
+      touch.startY = touch.lastY = a.clientY;
+      touch.moved = false;
+    }
+  },
+  { passive: true }
+);
+
+viewerStage.addEventListener(
+  "touchmove",
+  (event) => {
+    event.preventDefault();
+    const [a, b] = event.touches;
+    if (touch.mode === "pinch" && b) {
+      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const middle = stagePoint((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+      zoomAt(touch.scale * (distance / touch.distance), middle.x, middle.y, false);
+    } else if (touch.mode === "pan") {
+      view.x += a.clientX - touch.lastX;
+      view.y += a.clientY - touch.lastY;
+      applyView(false);
+    }
+    if (a && Math.hypot(a.clientX - touch.startX, a.clientY - touch.startY) > 10) touch.moved = true;
+    if (a) {
+      touch.lastX = a.clientX;
+      touch.lastY = a.clientY;
+    }
+  },
+  { passive: false }
+);
+
+viewerStage.addEventListener("touchend", (event) => {
+  touch.lastTouchEnd = Date.now();
+  if (event.touches.length) return;
+  const dx = touch.lastX - touch.startX;
+  if (touch.mode === "swipe" && touch.moved && Math.abs(dx) > 60) {
+    movePhoto(dx < 0 ? 1 : -1);
+  } else if (!touch.moved && touch.mode !== "pinch") {
+    const now = Date.now();
+    if (now - touch.lastTap < 320) {
+      toggleZoom(touch.startX, touch.startY);
+      touch.lastTap = 0;
+    } else {
+      touch.lastTap = now;
+    }
+  }
+  touch.mode = null;
+});
+
+// Rato (computador). Num ecra tatil os dois toques ja foram tratados acima.
+viewerStage.addEventListener("dblclick", (event) => {
+  if (Date.now() - touch.lastTouchEnd < 800) return;
+  toggleZoom(event.clientX, event.clientY);
+});
 
 // ---------- Lista ----------
 
@@ -887,7 +1031,8 @@ async function keepScreenOn() {
 function preloadPhotos() {
   const urls = [
     ...categories.map((category) => `assets/capas/${category.cover}`),
-    ...[...itemsById.values()].map(photoUrl).filter(Boolean)
+    ...[...itemsById.values()].map(photoUrl).filter(Boolean),
+    ...[...itemsById.values()].filter((item) => item.photo && item.photo.startsWith("fotos/")).map(hdPhotoUrl)
   ];
   let index = 0;
   const next = () => {
@@ -928,6 +1073,8 @@ document.addEventListener("click", (event) => {
   if (action === "open-list") openList();
   if (action === "open-search") openSearch();
   if (["close-list", "close-detail", "close-review", "close-photo", "close-waiter", "close-search"].includes(action)) goBack();
+  if (action === "photo-prev") movePhoto(-1);
+  if (action === "photo-next") movePhoto(1);
   if (action === "detail-prev") moveDetail(-1);
   if (action === "detail-next") moveDetail(1);
 });
