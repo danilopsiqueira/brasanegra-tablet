@@ -63,12 +63,16 @@ function photoUrl(item) {
   return item.photo.includes("/") ? `assets/${item.photo}` : `assets/produtos/${item.photo}`;
 }
 
-function photoHasText(item) {
-  return item.photo && !item.photo.includes("/");
-}
-
 function formatPrice(item) {
   return priceFormat.format(item.price);
+}
+
+function priceText(item) {
+  return item.unit === "kg" ? `${formatPrice(item)}/kg` : formatPrice(item);
+}
+
+function findItemByName(name) {
+  return [...itemsById.values()].find((item) => item.name === name);
 }
 
 function el(tag, className, text) {
@@ -223,6 +227,31 @@ function buildHome() {
   }
 }
 
+function buildFeatured() {
+  const row = $("#featured-row");
+  const featured = [...itemsById.values()].filter((item) => item.featured);
+  if (!featured.length) {
+    row.closest(".featured").hidden = true;
+    return;
+  }
+  featured.forEach((item) => {
+    const card = el("button", "feature-card");
+    card.type = "button";
+    const image = el("img");
+    image.src = photoUrl(item);
+    image.alt = item.name;
+    image.decoding = "async";
+    const text = el("span", "feature-card__text");
+    text.append(el("span", "feature-card__name", item.name));
+    if (item.desc) text.append(el("span", "feature-card__desc", item.desc));
+    text.append(el("span", "feature-card__price", priceText(item)));
+    card.append(image, text);
+    if (item.tag) card.appendChild(el("span", "product__tag", item.tag));
+    card.addEventListener("click", () => openDetail(item));
+    row.appendChild(card);
+  });
+}
+
 function buildTabs() {
   categories.forEach((category) => {
     const tab = el("button", "tab", category.name);
@@ -245,13 +274,15 @@ function productCard(item) {
     image.alt = item.name;
     image.loading = "lazy";
     image.decoding = "async";
-    card.appendChild(image);
-    if (!photoHasText(item)) {
-      card.classList.add("has-caption");
-      const caption = el("span", "product__caption");
-      caption.append(el("span", "product__name", item.name), el("span", "product__price", formatPrice(item)));
-      card.appendChild(caption);
-    }
+    const frame = el("span", "product__frame");
+    frame.appendChild(image);
+    card.appendChild(frame);
+    const caption = el("span", "product__caption");
+    const line = el("span", "product__line");
+    line.append(el("span", "product__name", item.name), el("span", "product__price", priceText(item)));
+    caption.appendChild(line);
+    if (item.desc) caption.appendChild(el("span", "product__desc", item.desc));
+    card.appendChild(caption);
   } else {
     card.classList.add("product--text");
     card.append(el("span", "product__name", item.name));
@@ -278,9 +309,14 @@ function openCategory(category) {
   categoryContent.replaceChildren();
 
   const head = el("div", "category__head");
-  head.appendChild(el("h2", "category__title", category.name));
-  if (category.note) head.appendChild(el("p", "note", category.note));
+  const cover = el("img", "category__cover");
+  cover.src = `assets/capas/${category.cover}`;
+  cover.alt = "";
+  const headText = el("div", "category__head-text");
+  headText.append(el("h2", "category__title", category.name), el("p", "category__count", `${categoryItems(category).length} opções`));
+  head.append(cover, headText);
   categoryContent.appendChild(head);
+  if (category.note) categoryContent.appendChild(el("p", "note", category.note));
 
   category.sections.forEach((section) => {
     const block = el("section", "section");
@@ -348,7 +384,7 @@ function renderDetail() {
   media.className = "detail__media";
   const url = photoUrl(item);
   if (url) {
-    const image = el("img");
+    const image = el("img", "detail__photo");
     image.src = url;
     image.alt = item.name;
     media.appendChild(image);
@@ -371,6 +407,24 @@ function renderDetail() {
   const note = $("#detail-note");
   note.textContent = notes;
   note.hidden = !notes;
+
+  const pairingBox = $("#detail-pairing");
+  pairingBox.replaceChildren();
+  const wine = item.pairing && findItemByName(item.pairing);
+  pairingBox.hidden = !wine;
+  if (wine) {
+    const button = el("button", "pairing__button");
+    button.type = "button";
+    const thumb = el("img", "pairing__photo");
+    thumb.src = photoUrl(wine);
+    thumb.alt = "";
+    const text = el("span", "pairing__text");
+    text.append(el("span", "pairing__label", "Fica perfeito com"), el("span", "pairing__name", wine.name), el("span", "pairing__price", priceText(wine)));
+    button.append(thumb, text);
+    button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>');
+    button.addEventListener("click", () => openDetail(wine));
+    pairingBox.appendChild(button);
+  }
 
   $("#detail-position").textContent = `${detailIndex + 1} de ${detailItems.length} em ${item.category.name} · deslize para ver mais`;
   $(".detail__nav--prev").disabled = detailIndex === 0;
@@ -676,6 +730,7 @@ function preloadPhotos() {
 
 loadChoice();
 buildHome();
+buildFeatured();
 buildTabs();
 refreshChoiceUi();
 showScreen("welcome");
@@ -693,6 +748,7 @@ document.addEventListener("click", (event) => {
   if (!button) return;
   const action = button.dataset.action;
   if (action === "home") showScreen("home");
+  if (action === "open-carnes") openCategory(categories.find((category) => category.id === "carnes") || categories[0]);
   if (action === "welcome") showScreen("welcome");
   if (action === "open-list") openList();
   if (action === "close-list") closeList();

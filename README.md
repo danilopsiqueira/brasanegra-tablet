@@ -5,9 +5,10 @@ Cardápio para os clientes consultarem no tablet da mesa.
 ## Como o cliente usa
 
 1. **Boas-vindas**: ecrã com brasas a subir e um botão grande "Toque para ver o cardápio".
-2. **Categorias com foto**: Entradas, Carnes, Peixes, Bebidas, Vinhos…, mais "Avalie-nos".
+2. **Início que abre o apetite**: destaque "Da brasa para a sua mesa", a fila "Saídos da brasa"
+   com as carnes, e as categorias com foto (mais "Avalie-nos").
 3. **Pratos**: cada prato com foto e preço. Tocar no prato abre-o em grande
-   (com o que acompanha, notas e preço); deslizar o dedo passa ao prato seguinte.
+   (descrição, o que acompanha, preço e uma sugestão de vinho); deslizar passa ao seguinte.
 4. **A minha escolha**: o botão **+ Juntar** guarda o prato numa lista, com quantidades
    e total estimado. No fim, o cliente mostra a lista ao empregado.
 
@@ -29,13 +30,18 @@ Tudo está em **`menu-data.js`**:
 
 ### Fotos
 
-- As fotos atuais foram recortadas das páginas do Canva (`assets/produtos/`) e já trazem
-  o nome e o preço escritos. **Se mudar um preço, mude também a foto** (ou passe a usar
-  uma foto real, abaixo), senão a foto mostra o preço antigo.
-- **Fotos reais** (recomendado): coloque a foto em `assets/fotos/` e escreva
-  `photo: "fotos/picanha.jpg"`. Como a foto real não tem texto, o nome e o preço passam
-  a aparecer automaticamente por baixo da foto, sempre certos.
-- As capas das categorias estão em `assets/capas/`.
+- **Fotos limpas** (sem texto) ficam em `assets/fotos/` e escrevem-se `photo: "fotos/picanha.webp"`.
+  O nome, o preço e a descrição aparecem por baixo, sempre certos.
+- **Ainda com texto do Canva** (`assets/produtos/`): Cupim, Costeletão à Parmegiana,
+  Escondidinho de Costela (acompanhamento), Coração de Frango, Perna de Frango (executivo),
+  Arroz Doce, Imperial, Sagres, Frize Lima/Pepino/Gengibre, Frize Framboesa/Pimenta Rosa,
+  Cohiba Wide Short (caixa) e Flor de Copán. Quando tiver fotos limpas destes, coloque-as em
+  `assets/fotos/` e troque o `photo`.
+- Algumas fotos limpas foram obtidas apagando o texto das imagens do Canva (copos de vinho,
+  charutos, pratos executivos…). Se notar alguma mancha, troque por uma foto nova.
+- **Capas** das categorias e a foto grande do início: `assets/capas/`.
+- As **sugestões de vinho** (`pairing`) e as **descrições** (`desc`) foram escritas como ponto
+  de partida: ajuste à vontade.
 
 ## Preparar o tablet
 
