@@ -56,12 +56,14 @@
               <span class="pill-button__label">A minha escolha</span>
               <span class="count-badge" data-count hidden></span>
             </button>
-            <button class="icon-button" type="button" data-action="fullscreen" aria-label="Ecrã inteiro" hidden>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
-            </button>
           </div>
         </header>
         <div class="home__scroll scroll-area">
+          <button class="search-field" type="button" data-action="open-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+            Procurar um prato ou bebida
+          </button>
+
           <section class="featured" aria-labelledby="featured-title">
             <div class="block-head">
               <h2 class="block-title" id="featured-title">Saídos da brasa</h2>
@@ -83,8 +85,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
             Início
           </button>
-          <nav id="tabs" class="tabs" aria-label="Categorias"></nav>
           <div class="topbar__actions">
+            <button class="icon-button icon-button--outline" type="button" data-action="open-search" aria-label="Procurar">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+            </button>
             <button class="pill-button" type="button" data-action="open-list">
               <span class="heart" aria-hidden="true"></span>
               <span class="pill-button__label">A minha escolha</span>
@@ -92,8 +96,11 @@
             </button>
           </div>
         </header>
-        <div id="category-scroll" class="category__scroll scroll-area">
-          <div id="category-content" class="category__content"></div>
+        <div class="category__body">
+          <nav id="tabs" class="tabs" aria-label="Categorias"></nav>
+          <div id="category-scroll" class="category__scroll scroll-area">
+            <div id="category-content" class="category__content"></div>
+          </div>
         </div>
       </section>
 
@@ -105,6 +112,18 @@
         <span class="list-bar__total" id="list-bar-total"></span>
         <span class="list-bar__cta">Ver</span>
       </button>
+
+      <!-- Procurar -->
+      <div id="search" class="search-panel" role="dialog" aria-modal="true" aria-label="Procurar" hidden>
+        <div class="search-panel__head">
+          <label class="search-panel__box" for="search-input">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
+            <input id="search-input" type="search" placeholder="Ex.: picanha, sangria, pudim" autocomplete="off" enterkeyhint="search">
+          </label>
+          <button class="search-panel__cancel" type="button" data-action="close-search">Fechar</button>
+        </div>
+        <div id="search-results" class="search-panel__results scroll-area"></div>
+      </div>
 
       <!-- Detalhe do prato -->
       <div id="detail" class="overlay" hidden>
@@ -146,6 +165,16 @@
           <div id="list-items" class="list-panel__items scroll-area"></div>
           <footer class="list-panel__foot" id="list-foot"></footer>
         </aside>
+      </div>
+
+      <!-- Mostrar ao empregado -->
+      <div id="waiter" class="waiter" role="dialog" aria-modal="true" aria-labelledby="waiter-title" hidden>
+        <div class="waiter__inner">
+          <h2 id="waiter-title">O meu pedido</h2>
+          <ul id="waiter-items" class="waiter__items"></ul>
+          <p id="waiter-total" class="waiter__total"></p>
+          <button class="big-button" type="button" data-action="close-waiter">Fechar</button>
+        </div>
       </div>
 
       <!-- Avaliacao -->

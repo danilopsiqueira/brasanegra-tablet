@@ -13,8 +13,13 @@ Cardápio para os clientes consultarem no tablet da mesa.
 4. **A minha escolha**: o botão **+** ao lado do preço guarda o prato numa lista, com quantidades
    e total estimado. No fim, o cliente mostra a lista ao empregado.
 
+5. **Procurar**: no início, "Procurar um prato ou bebida" encontra qualquer produto pelo nome.
+6. **Mostrar ao empregado**: na lista, mostra o pedido em letra grande, fácil de ler.
+
 Também:
-- Volta ao ecrã de boas-vindas depois de 2 minutos sem uso.
+- Com o tablet deitado, as categorias ficam numa coluna à esquerda, sempre visíveis.
+- O botão "voltar" do tablet fecha a janela aberta em vez de sair do cardápio.
+- Volta ao ecrã de boas-vindas depois de 3 minutos sem uso.
 - A lista "A minha escolha" é apagada depois de 20 minutos sem uso (mesa nova).
 - Funciona sem Wi-Fi depois de aberto uma vez, e mantém o ecrã ligado.
 - No fim de cada categoria há um botão para passar à seguinte.

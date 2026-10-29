@@ -176,7 +176,8 @@ function updateListBar() {
     currentScreen !== "welcome" &&
     detailOverlay.hidden &&
     listOverlay.hidden &&
-    reviewOverlay.hidden
+    reviewOverlay.hidden &&
+    $("#search").hidden
   );
 }
 
@@ -184,6 +185,56 @@ function restartAnimation(node, className) {
   node.classList.remove(className);
   void node.offsetWidth;
   node.classList.add(className);
+}
+
+// ---------- Camadas e botao "voltar" ----------
+// Cada janela aberta (categoria, prato, lista...) fica no historico do navegador,
+// para o botao "voltar" do tablet fechar a janela em vez de sair do cardapio.
+
+const layers = [];
+let historyWorks = true;
+
+function pushLayer(name) {
+  layers.push(name);
+  try {
+    history.pushState({ depth: layers.length }, "");
+  } catch (error) {
+    historyWorks = false;
+  }
+}
+
+function closeLayer(name) {
+  if (name === "category") showScreen("home");
+  if (name === "detail") closeDetail();
+  if (name === "list") closeList();
+  if (name === "search") closeSearch();
+  if (name === "review") closeReview();
+  if (name === "photo") closePhoto();
+  if (name === "waiter") closeWaiter();
+}
+
+// Fecha a camada de cima (botao fechar, X, "Inicio").
+function goBack() {
+  if (!layers.length) return;
+  if (historyWorks) history.back();
+  else closeLayer(layers.pop());
+}
+
+window.addEventListener("popstate", (event) => {
+  const depth = (event.state && event.state.depth) || 0;
+  while (layers.length > depth) closeLayer(layers.pop());
+});
+
+function closeAllLayers() {
+  const count = layers.length;
+  while (layers.length) closeLayer(layers.pop());
+  if (historyWorks && count) {
+    try {
+      history.go(-count);
+    } catch (error) {
+      // ignorar
+    }
+  }
 }
 
 // ---------- Ecras ----------
@@ -207,7 +258,7 @@ function buildHome() {
     const text = el("span", "category-tile__text");
     text.append(el("span", "category-tile__name", category.name));
     tile.append(image, text);
-    tile.addEventListener("click", () => openCategory(category));
+    tile.addEventListener("click", () => openCategory(category, true));
     categoryGrid.appendChild(tile);
   });
 
@@ -303,7 +354,8 @@ function productCard(item) {
   return card;
 }
 
-function openCategory(category) {
+function openCategory(category, asLayer = false) {
+  if (asLayer && currentScreen !== "category") pushLayer("category");
   categoryContent.replaceChildren();
   // As carnes sao a estrela da casa: cartoes maiores.
   categoryContent.classList.toggle("category__content--large", category.id === "carnes");
@@ -349,7 +401,11 @@ function openCategory(category) {
     tab.classList.toggle("is-active", active);
     if (active) {
       tab.setAttribute("aria-current", "page");
-      tabsNav.scrollTo({ left: tab.offsetLeft - (tabsNav.clientWidth - tab.offsetWidth) / 2, behavior: "smooth" });
+      tabsNav.scrollTo({
+        left: tab.offsetLeft - (tabsNav.clientWidth - tab.offsetWidth) / 2,
+        top: tab.offsetTop - (tabsNav.clientHeight - tab.offsetHeight) / 2,
+        behavior: "smooth"
+      });
     } else {
       tab.removeAttribute("aria-current");
     }
@@ -359,6 +415,7 @@ function openCategory(category) {
 // ---------- Detalhe do prato ----------
 
 function openDetail(item) {
+  if (detailOverlay.hidden) pushLayer("detail");
   detailItems = categoryItems(item.category);
   detailIndex = detailItems.indexOf(item);
   $(".detail").classList.remove("is-sliding");
@@ -501,6 +558,7 @@ $(".detail").addEventListener("touchend", (event) => {
 const photoViewer = $("#photo-viewer");
 
 function openPhoto(item) {
+  pushLayer("photo");
   $("#photo-viewer-image").src = photoUrl(item);
   $("#photo-viewer-image").alt = item.name;
   $("#photo-viewer-caption").textContent = `${item.name} · ${priceText(item)}`;
@@ -511,11 +569,13 @@ function closePhoto() {
   photoViewer.hidden = true;
 }
 
-photoViewer.addEventListener("click", closePhoto);
+photoViewer.addEventListener("click", goBack);
 
 // ---------- Lista ----------
 
 function openList() {
+  if (!listOverlay.hidden) return;
+  pushLayer("list");
   clearConfirm = false;
   listOverlay.hidden = false;
   renderList();
@@ -540,10 +600,7 @@ function renderList() {
     items.appendChild(empty);
     const back = el("button", "big-button big-button--ghost", "Ver o cardápio");
     back.type = "button";
-    back.addEventListener("click", () => {
-      closeList();
-      if (currentScreen === "welcome") showScreen("home");
-    });
+    back.addEventListener("click", goBack);
     foot.appendChild(back);
     return;
   }
@@ -573,7 +630,10 @@ function renderList() {
   total.append(el("span", null, "Total estimado"), el("strong", null, priceFormat.format(choiceTotal())));
   foot.appendChild(total);
   if (hasKgItems()) foot.appendChild(el("p", "list-hint", "Os cortes ao quilo são pesados na hora e não entram neste total."));
-  foot.appendChild(el("p", "list-waiter", "Mostre esta lista ao empregado para fazer o seu pedido."));
+  const show = el("button", "big-button", "Mostrar ao empregado");
+  show.type = "button";
+  show.addEventListener("click", openWaiter);
+  foot.appendChild(show);
 
   const clear = el("button", "big-button big-button--ghost", clearConfirm ? "Toque outra vez para apagar tudo" : "Limpar a lista");
   clear.type = "button";
@@ -591,9 +651,113 @@ function renderList() {
   foot.appendChild(clear);
 }
 
+// ---------- Mostrar ao empregado ----------
+
+const waiterOverlay = $("#waiter");
+
+function openWaiter() {
+  pushLayer("waiter");
+  toast.classList.remove("is-visible");
+  const list = $("#waiter-items");
+  list.replaceChildren();
+  choice.forEach((qty, id) => {
+    const item = itemsById.get(id);
+    const row = el("li");
+    row.append(el("span", "waiter__qty", `${qty}×`), el("span", "waiter__name", item.name));
+    if (item.unit === "kg") row.appendChild(el("span", "waiter__note", "ao quilo"));
+    list.appendChild(row);
+  });
+  $("#waiter-total").textContent = `Total estimado: ${priceFormat.format(choiceTotal())}${hasKgItems() ? " + cortes ao quilo" : ""}`;
+  waiterOverlay.hidden = false;
+}
+
+function closeWaiter() {
+  waiterOverlay.hidden = true;
+}
+
+// ---------- Procurar ----------
+
+const searchPanel = $("#search");
+const searchInput = $("#search-input");
+const searchResults = $("#search-results");
+
+function normalize(text) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function openSearch() {
+  if (!searchPanel.hidden) return;
+  pushLayer("search");
+  searchPanel.hidden = false;
+  searchInput.value = "";
+  renderSearch();
+  updateListBar();
+  searchInput.focus();
+}
+
+function closeSearch() {
+  searchInput.blur();
+  searchPanel.hidden = true;
+  updateListBar();
+}
+
+function searchRow(item) {
+  const row = el("button", "search-row");
+  row.type = "button";
+  const url = photoUrl(item);
+  if (url) {
+    const thumb = el("img", "search-row__photo");
+    thumb.src = url;
+    thumb.alt = "";
+    row.appendChild(thumb);
+  } else {
+    row.appendChild(el("span", "search-row__photo search-row__photo--text", item.name.slice(0, 1)));
+  }
+  const text = el("span", "search-row__text");
+  text.append(el("span", "search-row__name", item.name), el("span", "search-row__category", item.category.name));
+  row.append(text, el("span", "search-row__price", priceText(item)));
+  row.addEventListener("click", () => openDetail(item));
+  return row;
+}
+
+function renderSearch() {
+  const query = normalize(searchInput.value.trim());
+  searchResults.replaceChildren();
+
+  if (!query) {
+    searchResults.appendChild(el("p", "search-panel__label", "Sugestões"));
+    [...itemsById.values()].filter((item) => item.featured).forEach((item) => searchResults.appendChild(searchRow(item)));
+    return;
+  }
+
+  const words = query.split(/\s+/);
+  const matches = [...itemsById.values()].filter((item) => {
+    const haystack = normalize(`${item.name} ${item.category.name} ${item.section.title || ""} ${item.desc || ""}`);
+    return words.every((word) => haystack.includes(word));
+  });
+
+  if (!matches.length) {
+    searchResults.appendChild(el("p", "search-panel__empty", `Não encontrámos "${searchInput.value.trim()}". Experimente outra palavra.`));
+    return;
+  }
+  // Primeiro os pratos cujo nome tem a palavra procurada.
+  const inName = (item) => words.every((word) => normalize(item.name).includes(word));
+  matches.sort((a, b) => Number(inName(b)) - Number(inName(a)));
+  matches.slice(0, 60).forEach((item) => searchResults.appendChild(searchRow(item)));
+}
+
+searchInput.addEventListener("input", renderSearch);
+searchInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") searchInput.blur();
+});
+
 // ---------- Avaliacao ----------
 
 function openReview() {
+  pushLayer("review");
   $("#review-image").src = window.MENU_REVIEW_IMAGE;
   reviewOverlay.hidden = false;
   updateListBar();
@@ -682,10 +846,7 @@ function resetForNextGuest() {
     window.location.reload();
     return;
   }
-  detailOverlay.hidden = true;
-  listOverlay.hidden = true;
-  reviewOverlay.hidden = true;
-  photoViewer.hidden = true;
+  closeAllLayers();
   showScreen("welcome");
 }
 
@@ -705,7 +866,7 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
-// ---------- Ecra sempre ligado e ecra inteiro ----------
+// ---------- Ecra sempre ligado ----------
 
 async function keepScreenOn() {
   if (!("wakeLock" in navigator) || wakeLock || document.visibilityState !== "visible") return;
@@ -716,15 +877,6 @@ async function keepScreenOn() {
     });
   } catch (error) {
     wakeLock = null;
-  }
-}
-
-function toggleFullscreen() {
-  const element = document.documentElement;
-  if (document.fullscreenElement || document.webkitFullscreenElement) {
-    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-  } else {
-    (element.requestFullscreen || element.webkitRequestFullscreen).call(element);
   }
 }
 
@@ -756,37 +908,29 @@ showScreen("welcome");
 restartIdleTimer();
 window.addEventListener("load", preloadPhotos, { once: true });
 
-if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
-  document.querySelectorAll('[data-action="fullscreen"]').forEach((button) => (button.hidden = false));
-}
-
 screens.welcome.addEventListener("click", () => showScreen("home"));
 
 document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-action]");
   if (!button) return;
   const action = button.dataset.action;
-  if (action === "home") showScreen("home");
-  if (action === "open-carnes") openCategory(categories.find((category) => category.id === "carnes") || categories[0]);
-  if (action === "welcome") showScreen("welcome");
+  if (action === "home") {
+    if (layers[layers.length - 1] === "category") goBack();
+    else showScreen("home");
+  }
+  if (action === "welcome") {
+    closeAllLayers();
+    showScreen("welcome");
+  }
   if (action === "open-list") openList();
-  if (action === "close-list") closeList();
-  if (action === "close-detail") closeDetail();
+  if (action === "open-search") openSearch();
+  if (["close-list", "close-detail", "close-review", "close-photo", "close-waiter", "close-search"].includes(action)) goBack();
   if (action === "detail-prev") moveDetail(-1);
   if (action === "detail-next") moveDetail(1);
-  if (action === "close-review") closeReview();
-  if (action === "close-photo") closePhoto();
-  if (action === "fullscreen") toggleFullscreen();
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    if (!photoViewer.hidden) closePhoto();
-    else if (!reviewOverlay.hidden) closeReview();
-    else if (!listOverlay.hidden) closeList();
-    else if (!detailOverlay.hidden) closeDetail();
-    else if (currentScreen === "category") showScreen("home");
-  }
+  if (event.key === "Escape") goBack();
   if (!detailOverlay.hidden && event.key === "ArrowRight") moveDetail(1);
   if (!detailOverlay.hidden && event.key === "ArrowLeft") moveDetail(-1);
 });

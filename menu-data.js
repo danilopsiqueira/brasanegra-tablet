@@ -341,7 +341,7 @@ window.MENU_CATEGORIES = [
 window.MENU_REVIEW_IMAGE = "assets/avaliacao-20260814.jpg";
 
 // Minutos sem ninguem tocar ate voltar ao ecra de boas-vindas.
-window.MENU_IDLE_MINUTES = 2;
+window.MENU_IDLE_MINUTES = 3;
 
 // Minutos sem ninguem tocar ate limpar "A minha escolha" (proximo cliente).
 window.MENU_CLEAR_LIST_MINUTES = 20;
