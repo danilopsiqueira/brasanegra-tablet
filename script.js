@@ -1,470 +1,606 @@
-// A lista de paginas fica em menu-data.js. Este ficheiro so trata do comportamento.
+// O conteudo do cardapio fica em menu-data.js. Este ficheiro so trata do comportamento.
 
-const pages = window.MENU_PAGES || [];
+const categories = window.MENU_CATEGORIES || [];
 const idleMinutes = window.MENU_IDLE_MINUTES || 2;
-
-const app = document.querySelector(".menu-app");
-const carousel = document.querySelector("#carousel");
-const chipsNav = document.querySelector("#chips");
-const counter = document.querySelector("#counter");
-const progressBar = document.querySelector("#progress-bar");
-const hint = document.querySelector("#hint");
-const previousButton = document.querySelector(".nav-arrow--left");
-const nextButton = document.querySelector(".nav-arrow--right");
-const zoomResetButton = document.querySelector(".zoom-reset");
-const indexPanel = document.querySelector("#index-panel");
-const indexGrid = document.querySelector("#index-grid");
-const fullscreenButton = document.querySelector('[data-action="fullscreen"]');
-
-const MAX_ZOOM = 4;
-const DOUBLE_TAP_ZOOM = 2.5;
+const clearListMinutes = window.MENU_CLEAR_LIST_MINUTES || 20;
+const LIST_KEY = "brasa-negra-escolha";
 const loadedAt = Date.now();
 
-let currentIndex = 0;
-let perView = 1;
-let scrollTimer;
+const $ = (selector) => document.querySelector(selector);
+const screens = { welcome: $("#welcome"), home: $("#home"), category: $("#category") };
+const categoryGrid = $("#category-grid");
+const tabsNav = $("#tabs");
+const categoryScroll = $("#category-scroll");
+const categoryContent = $("#category-content");
+const detailOverlay = $("#detail");
+const listOverlay = $("#list");
+const reviewOverlay = $("#review");
+const listBar = $("#list-bar");
+const toast = $("#toast");
+
+const priceFormat = new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" });
+const plusIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>';
+
+let currentScreen = "welcome";
+let detailItems = [];
+let detailIndex = 0;
 let idleTimer;
+let toastTimer;
 let wakeLock = null;
-const slides = [];
-const chipButtons = new Map();
+let clearConfirm = false;
 
-// ---------- Caminhos das imagens ----------
+// ---------- Dados ----------
 
-function baseName(file) {
-  return file.replace(/\.[^.]+$/, "");
+function slug(text) {
+  return text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 }
 
-const imagePaths = {
-  original: (file) => `assets/${file}`,
-  web: (file) => `assets/web/${baseName(file)}.webp`,
-  thumb: (file) => `assets/thumbs/${baseName(file)}.webp`
-};
+const itemsById = new Map();
 
-// Usa a versao leve; se ainda nao foi gerada, cai para a imagem original.
-function setImageWithFallback(image, preferred, original) {
-  image.addEventListener("error", () => {
-    if (image.dataset.fallback) return;
-    image.dataset.fallback = "1";
-    image.src = original;
+categories.forEach((category) => {
+  category.sections.forEach((section) => {
+    section.items.forEach((item) => {
+      item.id = `${category.id}/${slug(item.name)}`;
+      item.category = category;
+      item.section = section;
+      itemsById.set(item.id, item);
+    });
   });
-  image.src = preferred;
+});
+
+function categoryItems(category) {
+  return category.sections.flatMap((section) => section.items);
 }
 
-// ---------- Construcao da pagina ----------
-
-function createSlides() {
-  pages.forEach((page, index) => {
-    const slide = document.createElement("article");
-    slide.className = "slide";
-    slide.dataset.index = index;
-    slide.setAttribute("aria-label", `${page.category} – página ${index + 1} de ${pages.length}`);
-
-    const layer = document.createElement("div");
-    layer.className = "zoom-layer";
-
-    const image = document.createElement("img");
-    image.alt = `Cardápio Brasa Negra – ${page.category}`;
-    image.width = 1200;
-    image.height = 1920;
-    image.draggable = false;
-    image.decoding = "async";
-    image.addEventListener("load", () => image.classList.add("is-loaded"));
-
-    layer.appendChild(image);
-    slide.appendChild(layer);
-    carousel.appendChild(slide);
-    slides.push({ slide, layer, image, page, loaded: false, hiRes: false });
-  });
+function photoUrl(item) {
+  if (!item.photo) return null;
+  // Fotos reais (sem texto por cima) ficam noutra pasta, ex.: "fotos/picanha.jpg".
+  return item.photo.includes("/") ? `assets/${item.photo}` : `assets/produtos/${item.photo}`;
 }
 
-function loadSlide(index, highPriority = false) {
-  const item = slides[index];
-  if (!item || item.loaded) return;
-  item.loaded = true;
-  if (highPriority) item.image.fetchPriority = "high";
-  setImageWithFallback(item.image, imagePaths.web(item.page.file), imagePaths.original(item.page.file));
+function photoHasText(item) {
+  return item.photo && !item.photo.includes("/");
 }
 
-function loadHiRes(item) {
-  if (item.hiRes) return;
-  item.hiRes = true;
-  const original = imagePaths.original(item.page.file);
-  const preload = new Image();
-  preload.onload = () => {
-    item.image.src = original;
-  };
-  preload.src = original;
+function formatPrice(item) {
+  return priceFormat.format(item.price);
 }
 
-function preloadRemaining() {
-  let next = 0;
-  const step = () => {
-    while (next < slides.length && slides[next].loaded) next += 1;
-    if (next >= slides.length) return;
-    loadSlide(next);
-    window.setTimeout(step, 500);
-  };
-  window.setTimeout(step, 1000);
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
 }
 
-function createChips() {
-  pages.forEach((page, index) => {
-    if (page.chip === false || chipButtons.has(page.category)) return;
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "chip";
-    if (index === pages.length - 1) chip.classList.add("chip--highlight");
-    chip.textContent = page.category;
-    chip.addEventListener("click", () => goToSlide(index));
-    chipsNav.appendChild(chip);
-    chipButtons.set(page.category, chip);
+// ---------- A minha escolha ----------
+
+let choice = new Map();
+
+function readSavedChoice() {
+  try {
+    return JSON.parse(localStorage.getItem(LIST_KEY) || "null");
+  } catch (error) {
+    return null;
+  }
+}
+
+function loadChoice() {
+  const saved = readSavedChoice();
+  if (!saved || Date.now() - saved.at > clearListMinutes * 60 * 1000) return;
+  Object.entries(saved.items || {}).forEach(([id, qty]) => {
+    if (itemsById.has(id) && qty > 0) choice.set(id, qty);
   });
 }
 
-function createIndex() {
-  pages.forEach((page, index) => {
-    const thumb = document.createElement("button");
-    thumb.type = "button";
-    thumb.className = "index-thumb";
-    thumb.dataset.index = index;
-    thumb.setAttribute("aria-label", `${page.category}, página ${index + 1}`);
+function saveChoice() {
+  try {
+    localStorage.setItem(LIST_KEY, JSON.stringify({ at: Date.now(), items: Object.fromEntries(choice) }));
+  } catch (error) {
+    // Sem armazenamento (modo privado): a lista funciona na mesma enquanto a pagina estiver aberta.
+  }
+}
 
-    const frame = document.createElement("span");
-    frame.className = "index-thumb__frame";
+function choiceCount() {
+  let total = 0;
+  choice.forEach((qty) => (total += qty));
+  return total;
+}
 
-    const image = document.createElement("img");
+function choiceTotal() {
+  let total = 0;
+  choice.forEach((qty, id) => {
+    const item = itemsById.get(id);
+    if (item.unit !== "kg") total += item.price * qty;
+  });
+  return total;
+}
+
+function hasKgItems() {
+  return [...choice.keys()].some((id) => itemsById.get(id).unit === "kg");
+}
+
+function setQuantity(item, qty) {
+  const before = choice.get(item.id) || 0;
+  if (qty <= 0) choice.delete(item.id);
+  else choice.set(item.id, qty);
+  saveChoice();
+  refreshChoiceUi(qty > before);
+}
+
+function addOne(item) {
+  const qty = (choice.get(item.id) || 0) + 1;
+  setQuantity(item, qty);
+  showToast(qty > 1 ? `${item.name}: ${qty} na sua escolha` : `${item.name} foi para a sua escolha`);
+}
+
+function refreshChoiceUi(bump = false) {
+  const count = choiceCount();
+
+  document.querySelectorAll("[data-count]").forEach((badge) => {
+    badge.hidden = count === 0;
+    badge.textContent = count;
+    if (bump) restartAnimation(badge, "is-bumping");
+  });
+
+  $("#list-bar-count").textContent = count === 1 ? "1 item" : `${count} itens`;
+  $("#list-bar-total").textContent = priceFormat.format(choiceTotal()) + (hasKgItems() ? " +" : "");
+  updateListBar();
+  if (bump && !listBar.hidden) restartAnimation(listBar, "is-bumping");
+
+  document.querySelectorAll(".product[data-id]").forEach((card) => {
+    const qty = choice.get(card.dataset.id) || 0;
+    card.classList.toggle("is-chosen", qty > 0);
+    const button = card.querySelector(".product__add");
+    button.classList.toggle("is-chosen", qty > 0);
+    button.innerHTML = qty > 0 ? `✓ ${qty} na escolha` : `${plusIcon}Juntar`;
+    button.setAttribute("aria-label", qty > 0 ? `${qty} na sua escolha, juntar mais um` : "Juntar à minha escolha");
+  });
+
+  if (!detailOverlay.hidden) renderDetailActions();
+  if (!listOverlay.hidden) renderList();
+}
+
+function updateListBar() {
+  listBar.hidden = !(
+    choiceCount() > 0 &&
+    currentScreen !== "welcome" &&
+    detailOverlay.hidden &&
+    listOverlay.hidden &&
+    reviewOverlay.hidden
+  );
+}
+
+function restartAnimation(node, className) {
+  node.classList.remove(className);
+  void node.offsetWidth;
+  node.classList.add(className);
+}
+
+// ---------- Ecras ----------
+
+function showScreen(name) {
+  currentScreen = name;
+  Object.entries(screens).forEach(([key, screen]) => screen.classList.toggle("is-active", key === name));
+  if (name === "welcome") startEmbers();
+  else stopEmbers();
+  updateListBar();
+}
+
+function buildHome() {
+  categories.forEach((category) => {
+    const tile = el("button", "category-tile");
+    tile.type = "button";
+    const image = el("img");
+    image.src = `assets/capas/${category.cover}`;
     image.alt = "";
+    image.decoding = "async";
+    const text = el("span", "category-tile__text");
+    const count = categoryItems(category).length;
+    text.append(el("span", "category-tile__name", category.name), el("span", "category-tile__meta", `${count} opções`));
+    tile.append(image, text);
+    tile.addEventListener("click", () => openCategory(category));
+    categoryGrid.appendChild(tile);
+  });
+
+  if (window.MENU_REVIEW_IMAGE) {
+    const review = el("button", "category-tile category-tile--review");
+    review.type = "button";
+    const inner = el("span", "review-tile");
+    inner.append(
+      el("span", "review-tile__stars", "★★★★★"),
+      el("span", "review-tile__title", "Avalie-nos"),
+      el("span", "review-tile__sub", "e ganhe um brigadeiro")
+    );
+    review.appendChild(inner);
+    review.addEventListener("click", openReview);
+    categoryGrid.appendChild(review);
+  }
+}
+
+function buildTabs() {
+  categories.forEach((category) => {
+    const tab = el("button", "tab", category.name);
+    tab.type = "button";
+    tab.dataset.id = category.id;
+    tab.addEventListener("click", () => openCategory(category));
+    tabsNav.appendChild(tab);
+  });
+}
+
+function productCard(item) {
+  const card = el("button", "product");
+  card.type = "button";
+  card.dataset.id = item.id;
+
+  const url = photoUrl(item);
+  if (url) {
+    const image = el("img", "product__photo");
+    image.src = url;
+    image.alt = item.name;
     image.loading = "lazy";
     image.decoding = "async";
-    setImageWithFallback(image, imagePaths.thumb(page.file), imagePaths.original(page.file));
-    frame.appendChild(image);
-
-    const label = document.createElement("span");
-    label.className = "index-thumb__label";
-    label.textContent = page.category;
-
-    thumb.append(frame, label);
-    thumb.addEventListener("click", () => {
-      closeIndex();
-      goToSlide(index, false);
-    });
-    indexGrid.appendChild(thumb);
-  });
-}
-
-// ---------- Navegacao ----------
-
-function updatePerView() {
-  const width = carousel.clientWidth || window.innerWidth;
-  const height = carousel.clientHeight || window.innerHeight;
-  // Tablet deitado: mostra duas paginas lado a lado, como um livro.
-  const next = width / height >= 1.05 && pages.length > 1 ? 2 : 1;
-  if (next !== perView) {
-    perView = next;
-    app.style.setProperty("--per-view", perView);
-  }
-}
-
-function slideWidth() {
-  return (carousel.clientWidth || window.innerWidth) / perView;
-}
-
-function lastStartIndex() {
-  return Math.max(0, pages.length - perView);
-}
-
-function goToSlide(index, smooth = true) {
-  resetZoom(false);
-  const safeIndex = Math.max(0, Math.min(index, lastStartIndex()));
-  carousel.scrollTo({ left: safeIndex * slideWidth(), behavior: smooth ? "smooth" : "auto" });
-  if (!smooth) updateUi(safeIndex);
-}
-
-function updateUi(index) {
-  currentIndex = index;
-
-  for (let i = index - 1; i <= index + perView + 1; i += 1) {
-    loadSlide(i, i >= index && i < index + perView);
-  }
-
-  const lastVisible = Math.min(index + perView, pages.length);
-  counter.textContent =
-    lastVisible - index > 1
-      ? `Páginas ${index + 1}–${lastVisible} de ${pages.length}`
-      : `Página ${index + 1} de ${pages.length}`;
-  progressBar.style.width = `${(lastVisible / pages.length) * 100}%`;
-
-  let activeCategory = null;
-  for (let i = index; i < lastVisible; i += 1) {
-    if (pages[i].chip !== false) {
-      activeCategory = pages[i].category;
-      break;
+    card.appendChild(image);
+    if (!photoHasText(item)) {
+      card.classList.add("has-caption");
+      const caption = el("span", "product__caption");
+      caption.append(el("span", "product__name", item.name), el("span", "product__price", formatPrice(item)));
+      card.appendChild(caption);
     }
+  } else {
+    card.classList.add("product--text");
+    card.append(el("span", "product__name", item.name));
+    if (item.desc) card.append(el("span", "product__desc", item.desc));
+    card.append(el("span", "product__price", formatPrice(item)));
   }
 
-  chipButtons.forEach((chip, category) => {
-    const isActive = category === activeCategory;
-    chip.classList.toggle("is-active", isActive);
-    if (isActive) {
-      chip.setAttribute("aria-current", "true");
-      const target = chip.offsetLeft - (chipsNav.clientWidth - chip.offsetWidth) / 2;
-      chipsNav.scrollTo({ left: target, behavior: "smooth" });
+  if (item.tag) card.appendChild(el("span", "product__tag", item.tag));
+
+  const add = el("span", "product__add");
+  add.setAttribute("role", "button");
+  add.innerHTML = `${plusIcon}Juntar`;
+  add.addEventListener("click", (event) => {
+    event.stopPropagation();
+    addOne(item);
+  });
+  card.appendChild(add);
+
+  card.addEventListener("click", () => openDetail(item));
+  return card;
+}
+
+function openCategory(category) {
+  categoryContent.replaceChildren();
+
+  const head = el("div", "category__head");
+  head.appendChild(el("h2", "category__title", category.name));
+  if (category.note) head.appendChild(el("p", "note", category.note));
+  categoryContent.appendChild(head);
+
+  category.sections.forEach((section) => {
+    const block = el("section", "section");
+    if (section.title) {
+      const title = el("h3", "section__title", section.title);
+      if (section.note) title.appendChild(el("span", "section__note", section.note));
+      block.appendChild(title);
+    } else if (section.note) {
+      block.appendChild(el("p", "note", section.note));
+    }
+    const grid = el("div", "product-grid");
+    section.items.forEach((item) => grid.appendChild(productCard(item)));
+    block.appendChild(grid);
+    categoryContent.appendChild(block);
+  });
+
+  const next = categories[categories.indexOf(category) + 1];
+  if (next) {
+    const button = el("button", "next-category");
+    button.type = "button";
+    const label = el("span");
+    label.append(el("span", null, "A seguir"), el("strong", null, next.name));
+    button.appendChild(label);
+    button.insertAdjacentHTML("beforeend", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>');
+    button.addEventListener("click", () => openCategory(next));
+    categoryContent.appendChild(button);
+  }
+
+  showScreen("category");
+  categoryScroll.scrollTop = 0;
+  refreshChoiceUi();
+
+  tabsNav.querySelectorAll(".tab").forEach((tab) => {
+    const active = tab.dataset.id === category.id;
+    tab.classList.toggle("is-active", active);
+    if (active) {
+      tab.setAttribute("aria-current", "page");
+      tabsNav.scrollTo({ left: tab.offsetLeft - (tabsNav.clientWidth - tab.offsetWidth) / 2, behavior: "smooth" });
     } else {
-      chip.removeAttribute("aria-current");
+      tab.removeAttribute("aria-current");
     }
   });
-
-  previousButton.classList.toggle("is-disabled", index <= 0);
-  nextButton.classList.toggle("is-disabled", index >= lastStartIndex());
 }
 
-function updateFromScroll() {
-  const index = Math.round(carousel.scrollLeft / slideWidth());
-  updateUi(Math.max(0, Math.min(index, lastStartIndex())));
+// ---------- Detalhe do prato ----------
+
+function openDetail(item) {
+  detailItems = categoryItems(item.category);
+  detailIndex = detailItems.indexOf(item);
+  $(".detail").classList.remove("is-sliding");
+  detailOverlay.hidden = false;
+  renderDetail();
+  updateListBar();
 }
 
-function onScroll() {
-  clearTimeout(scrollTimer);
-  scrollTimer = setTimeout(updateFromScroll, 80);
-  if (carousel.scrollLeft > 10) hint.classList.add("is-hidden");
+function closeDetail() {
+  detailOverlay.hidden = true;
+  updateListBar();
 }
 
-// ---------- Indice ----------
+function renderDetail() {
+  const item = detailItems[detailIndex];
+  const media = $("#detail-media");
+  media.replaceChildren();
+  media.className = "detail__media";
+  const url = photoUrl(item);
+  if (url) {
+    const image = el("img");
+    image.src = url;
+    image.alt = item.name;
+    media.appendChild(image);
+  } else {
+    media.classList.add("detail__media--text");
+    media.textContent = item.name;
+  }
 
-function openIndex() {
-  resetZoom(false);
-  indexGrid.querySelectorAll(".index-thumb").forEach((thumb) => {
-    const index = Number(thumb.dataset.index);
-    thumb.classList.toggle("is-current", index >= currentIndex && index < currentIndex + perView);
+  $("#detail-section").textContent = [item.category.name, item.section.title].filter(Boolean).join(" · ");
+  $("#detail-name").textContent = item.name;
+  const price = $("#detail-price");
+  price.textContent = formatPrice(item);
+  if (item.unit === "kg") price.appendChild(el("small", null, "por kg"));
+
+  const desc = $("#detail-desc");
+  desc.textContent = item.desc || "";
+  desc.hidden = !item.desc;
+
+  const notes = [item.section.note, item.category.note].filter(Boolean).join(" · ");
+  const note = $("#detail-note");
+  note.textContent = notes;
+  note.hidden = !notes;
+
+  $("#detail-position").textContent = `${detailIndex + 1} de ${detailItems.length} em ${item.category.name} · deslize para ver mais`;
+  $(".detail__nav--prev").disabled = detailIndex === 0;
+  $(".detail__nav--next").disabled = detailIndex === detailItems.length - 1;
+  renderDetailActions();
+}
+
+function renderDetailActions() {
+  const item = detailItems[detailIndex];
+  const qty = choice.get(item.id) || 0;
+  const actions = $("#detail-actions");
+  actions.replaceChildren();
+
+  if (qty === 0) {
+    const button = el("button", "big-button");
+    button.type = "button";
+    button.innerHTML = '<span class="heart" aria-hidden="true"></span>Juntar à minha escolha';
+    button.addEventListener("click", () => addOne(item));
+    actions.appendChild(button);
+  } else {
+    actions.appendChild(stepper(item, qty, false));
+  }
+}
+
+function stepper(item, qty, small) {
+  const box = el("div", small ? "stepper stepper--small" : "stepper");
+  const minus = el("button", null, "−");
+  minus.type = "button";
+  minus.setAttribute("aria-label", `Tirar um: ${item.name}`);
+  minus.addEventListener("click", () => setQuantity(item, qty - 1));
+  const plus = el("button", null, "+");
+  plus.type = "button";
+  plus.setAttribute("aria-label", `Mais um: ${item.name}`);
+  plus.addEventListener("click", () => setQuantity(item, qty + 1));
+  const value = el("span", "stepper__value");
+  if (small) {
+    value.textContent = qty;
+  } else {
+    value.append(el("strong", null, String(qty)), document.createTextNode(" na sua escolha"));
+  }
+  box.append(minus, value, plus);
+  return box;
+}
+
+function moveDetail(step) {
+  const next = detailIndex + step;
+  if (next < 0 || next >= detailItems.length) return;
+  detailIndex = next;
+  $(".detail").classList.add("is-sliding");
+  renderDetail();
+}
+
+// Deslizar o dedo no detalhe passa para o prato seguinte ou anterior.
+let swipeStart = null;
+$(".detail").addEventListener(
+  "touchstart",
+  (event) => {
+    swipeStart = event.touches.length === 1 ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+  },
+  { passive: true }
+);
+$(".detail").addEventListener("touchend", (event) => {
+  if (!swipeStart) return;
+  const touch = event.changedTouches[0];
+  const dx = touch.clientX - swipeStart.x;
+  const dy = touch.clientY - swipeStart.y;
+  swipeStart = null;
+  if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) moveDetail(dx < 0 ? 1 : -1);
+});
+
+// ---------- Lista ----------
+
+function openList() {
+  clearConfirm = false;
+  listOverlay.hidden = false;
+  renderList();
+  updateListBar();
+}
+
+function closeList() {
+  listOverlay.hidden = true;
+  updateListBar();
+}
+
+function renderList() {
+  const items = $("#list-items");
+  const foot = $("#list-foot");
+  items.replaceChildren();
+  foot.replaceChildren();
+
+  if (choice.size === 0) {
+    const empty = el("div", "list-empty");
+    empty.innerHTML =
+      '<span class="heart" aria-hidden="true"></span><span>Ainda não escolheu nada.<br>Toque no <strong>+</strong> de um prato para o juntar aqui.</span>';
+    items.appendChild(empty);
+    const back = el("button", "big-button big-button--ghost", "Ver o cardápio");
+    back.type = "button";
+    back.addEventListener("click", () => {
+      closeList();
+      if (currentScreen === "welcome") showScreen("home");
+    });
+    foot.appendChild(back);
+    return;
+  }
+
+  choice.forEach((qty, id) => {
+    const item = itemsById.get(id);
+    const row = el("div", "list-row");
+    const url = photoUrl(item);
+    let thumb;
+    if (url) {
+      thumb = el("img", "list-row__photo");
+      thumb.src = url;
+      thumb.alt = "";
+    } else {
+      thumb = el("span", "list-row__photo list-row__photo--text", item.name.slice(0, 1));
+    }
+    const info = el("div");
+    info.append(
+      el("p", "list-row__name", item.name),
+      el("p", "list-row__price", item.unit === "kg" ? `${formatPrice(item)} por kg` : `${qty} × ${formatPrice(item)}`)
+    );
+    row.append(thumb, info, stepper(item, qty, true));
+    items.appendChild(row);
   });
-  indexPanel.hidden = false;
-  const current = indexGrid.querySelector(".index-thumb.is-current");
-  if (current) current.scrollIntoView({ block: "center" });
+
+  const total = el("div", "list-total");
+  total.append(el("span", null, "Total estimado"), el("strong", null, priceFormat.format(choiceTotal())));
+  foot.appendChild(total);
+  if (hasKgItems()) foot.appendChild(el("p", "list-hint", "Os cortes ao quilo são pesados na hora e não entram neste total."));
+  foot.appendChild(el("p", "list-waiter", "Mostre esta lista ao empregado para fazer o seu pedido."));
+
+  const clear = el("button", "big-button big-button--ghost", clearConfirm ? "Toque outra vez para apagar tudo" : "Limpar a lista");
+  clear.type = "button";
+  clear.addEventListener("click", () => {
+    if (!clearConfirm) {
+      clearConfirm = true;
+      renderList();
+      return;
+    }
+    clearConfirm = false;
+    choice.clear();
+    saveChoice();
+    refreshChoiceUi();
+  });
+  foot.appendChild(clear);
 }
 
-function closeIndex() {
-  indexPanel.hidden = true;
+// ---------- Avaliacao ----------
+
+function openReview() {
+  $("#review-image").src = window.MENU_REVIEW_IMAGE;
+  reviewOverlay.hidden = false;
+  updateListBar();
 }
 
-// ---------- Ampliar (pinca, duplo toque e arrastar) ----------
-
-const zoom = { item: null, scale: 1, x: 0, y: 0 };
-
-function slideItemFromTarget(target) {
-  const slide = target && target.closest ? target.closest(".slide") : null;
-  return slide ? slides[Number(slide.dataset.index)] : null;
+function closeReview() {
+  reviewOverlay.hidden = true;
+  updateListBar();
 }
 
-// Coordenadas do ponto dentro da area da imagem (sem transformacao).
-function localPoint(item, clientX, clientY) {
-  const rect = item.slide.getBoundingClientRect();
+// ---------- Aviso rapido ----------
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add("is-visible");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 2200);
+}
+
+// ---------- Brasas a subir no ecra de boas-vindas ----------
+
+const embersCanvas = $("#embers");
+const embersContext = embersCanvas.getContext("2d");
+let embers = [];
+let embersFrame = null;
+
+function resizeEmbers() {
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  embersCanvas.width = embersCanvas.clientWidth * ratio;
+  embersCanvas.height = embersCanvas.clientHeight * ratio;
+  embersContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+}
+
+function newEmber(anywhere) {
   return {
-    x: clientX - rect.left - item.layer.offsetLeft,
-    y: clientY - rect.top - item.layer.offsetTop
+    x: Math.random() * embersCanvas.clientWidth,
+    y: anywhere ? Math.random() * embersCanvas.clientHeight : embersCanvas.clientHeight + 10,
+    size: 0.8 + Math.random() * 2.4,
+    speed: 0.4 + Math.random() * 1.1,
+    drift: (Math.random() - 0.5) * 0.6,
+    phase: Math.random() * Math.PI * 2,
+    life: 0.5 + Math.random() * 0.5
   };
 }
 
-// Mantem a imagem dentro do ecra: nada de arrastar para o vazio.
-function clampAxis(offset, scale, layerSize, contentStart, contentSize) {
-  const scaled = contentSize * scale;
-  if (scaled <= layerSize) return (layerSize - scaled) / 2 - contentStart * scale;
-  const min = layerSize - (contentStart + contentSize) * scale;
-  const max = -contentStart * scale;
-  return Math.min(max, Math.max(min, offset));
+function drawEmbers() {
+  const width = embersCanvas.clientWidth;
+  const height = embersCanvas.clientHeight;
+  embersContext.clearRect(0, 0, width, height);
+  embers.forEach((ember, index) => {
+    ember.y -= ember.speed;
+    ember.phase += 0.03;
+    ember.x += ember.drift + Math.sin(ember.phase) * 0.35;
+    if (ember.y < -10) embers[index] = newEmber(false);
+    const fade = Math.max(0, Math.min(1, ember.y / height)) * ember.life;
+    const radius = ember.size * 4;
+    const glow = embersContext.createRadialGradient(ember.x, ember.y, 0, ember.x, ember.y, radius);
+    glow.addColorStop(0, `rgba(255, 196, 110, ${fade})`);
+    glow.addColorStop(0.4, `rgba(240, 120, 40, ${fade * 0.6})`);
+    glow.addColorStop(1, "rgba(240, 90, 20, 0)");
+    embersContext.fillStyle = glow;
+    embersContext.beginPath();
+    embersContext.arc(ember.x, ember.y, radius, 0, Math.PI * 2);
+    embersContext.fill();
+  });
+  embersFrame = requestAnimationFrame(drawEmbers);
 }
 
-function clampZoom() {
-  const { item } = zoom;
-  const w = item.layer.offsetWidth;
-  const h = item.layer.offsetHeight;
-  const ratio = (item.image.naturalWidth || 1200) / (item.image.naturalHeight || 1920);
-  let cw = w;
-  let ch = w / ratio;
-  if (ch > h) {
-    ch = h;
-    cw = h * ratio;
-  }
-  zoom.x = clampAxis(zoom.x, zoom.scale, w, (w - cw) / 2, cw);
-  zoom.y = clampAxis(zoom.y, zoom.scale, h, (h - ch) / 2, ch);
+function startEmbers() {
+  if (embersFrame || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  resizeEmbers();
+  embers = Array.from({ length: 70 }, () => newEmber(true));
+  drawEmbers();
 }
 
-function applyZoom(animate) {
-  const { item } = zoom;
-  if (!item) return;
-  clampZoom();
-  item.layer.classList.toggle("is-animating", animate);
-  item.layer.style.transform = `translate3d(${zoom.x}px, ${zoom.y}px, 0) scale(${zoom.scale})`;
-
-  const isZoomed = zoom.scale > 1.01;
-  carousel.classList.toggle("is-zoomed", isZoomed);
-  zoomResetButton.hidden = !isZoomed;
-  if (zoom.scale >= 1.6) loadHiRes(item);
+function stopEmbers() {
+  cancelAnimationFrame(embersFrame);
+  embersFrame = null;
 }
-
-function zoomTo(item, scale, focusX, focusY, animate) {
-  if (zoom.item && zoom.item !== item) resetZoom(false);
-  const nextScale = Math.max(1, Math.min(MAX_ZOOM, scale));
-  const ratio = nextScale / zoom.scale;
-  zoom.item = item;
-  zoom.x = focusX - (focusX - zoom.x) * ratio;
-  zoom.y = focusY - (focusY - zoom.y) * ratio;
-  zoom.scale = nextScale;
-  applyZoom(animate);
-}
-
-function resetZoom(animate = true) {
-  if (!zoom.item) return;
-  zoom.scale = 1;
-  zoom.x = 0;
-  zoom.y = 0;
-  applyZoom(animate);
-  zoom.item = null;
-}
-
-function toggleZoomAt(item, clientX, clientY) {
-  if (zoom.item === item && zoom.scale > 1.01) {
-    resetZoom(true);
-    return;
-  }
-  const point = localPoint(item, clientX, clientY);
-  zoomTo(item, DOUBLE_TAP_ZOOM, point.x, point.y, true);
-  hint.classList.add("is-hidden");
-}
-
-const gesture = { mode: null, startDistance: 0, startScale: 1, startX: 0, startY: 0, lastX: 0, lastY: 0 };
-const tap = { startX: 0, startY: 0, startTime: 0, moved: false, multi: false, lastTime: 0, lastX: 0, lastY: 0 };
-
-function touchDistance(a, b) {
-  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-}
-
-function startPinch(event) {
-  const [a, b] = event.touches;
-  const item = zoom.item || slideItemFromTarget(a.target);
-  if (!item) return;
-  if (zoom.item !== item) {
-    resetZoom(false);
-    zoom.item = item;
-  }
-  const mid = localPoint(item, (a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
-  gesture.mode = "pinch";
-  gesture.startDistance = touchDistance(a, b) || 1;
-  gesture.startScale = zoom.scale;
-  gesture.startX = zoom.x;
-  gesture.startY = zoom.y;
-  gesture.midX = mid.x;
-  gesture.midY = mid.y;
-}
-
-function startPan(touch) {
-  gesture.mode = "pan";
-  gesture.lastX = touch.clientX;
-  gesture.lastY = touch.clientY;
-}
-
-carousel.addEventListener(
-  "touchstart",
-  (event) => {
-    if (event.touches.length === 1) {
-      const touch = event.touches[0];
-      tap.startX = touch.clientX;
-      tap.startY = touch.clientY;
-      tap.startTime = Date.now();
-      tap.moved = false;
-      tap.multi = false;
-      if (zoom.scale > 1.01) startPan(touch);
-    } else if (event.touches.length === 2) {
-      tap.multi = true;
-      event.preventDefault();
-      startPinch(event);
-    }
-  },
-  { passive: false }
-);
-
-carousel.addEventListener(
-  "touchmove",
-  (event) => {
-    const touch = event.touches[0];
-    if (Math.hypot(touch.clientX - tap.startX, touch.clientY - tap.startY) > 10) tap.moved = true;
-
-    if (gesture.mode === "pinch" && event.touches.length >= 2) {
-      event.preventDefault();
-      const [a, b] = event.touches;
-      const item = zoom.item;
-      const mid = localPoint(item, (a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
-      const scale = Math.max(1, Math.min(MAX_ZOOM, gesture.startScale * (touchDistance(a, b) / gesture.startDistance)));
-      const ratio = scale / gesture.startScale;
-      zoom.scale = scale;
-      zoom.x = mid.x - (gesture.midX - gesture.startX) * ratio;
-      zoom.y = mid.y - (gesture.midY - gesture.startY) * ratio;
-      applyZoom(false);
-    } else if (gesture.mode === "pan" && zoom.scale > 1.01) {
-      event.preventDefault();
-      zoom.x += touch.clientX - gesture.lastX;
-      zoom.y += touch.clientY - gesture.lastY;
-      gesture.lastX = touch.clientX;
-      gesture.lastY = touch.clientY;
-      applyZoom(false);
-    }
-  },
-  { passive: false }
-);
-
-carousel.addEventListener("touchend", (event) => {
-  if (event.touches.length === 1 && zoom.scale > 1.01) {
-    startPan(event.touches[0]);
-    return;
-  }
-  if (event.touches.length > 0) return;
-
-  if (gesture.mode === "pinch" && zoom.scale < 1.08) resetZoom(true);
-  gesture.mode = null;
-
-  // Duplo toque
-  const now = Date.now();
-  const isTap = !tap.moved && !tap.multi && now - tap.startTime < 300;
-  if (!isTap) return;
-  const isDoubleTap =
-    now - tap.lastTime < 320 && Math.hypot(tap.startX - tap.lastX, tap.startY - tap.lastY) < 40;
-  if (isDoubleTap) {
-    tap.lastTime = 0;
-    const item = slideItemFromTarget(event.target);
-    if (item) toggleZoomAt(item, tap.startX, tap.startY);
-    event.preventDefault();
-  } else {
-    tap.lastTime = now;
-    tap.lastX = tap.startX;
-    tap.lastY = tap.startY;
-  }
-});
-
-// Rato (computador): duplo clique para ampliar e arrastar para mover.
-carousel.addEventListener("dblclick", (event) => {
-  const item = slideItemFromTarget(event.target);
-  if (item) toggleZoomAt(item, event.clientX, event.clientY);
-});
-
-carousel.addEventListener("pointerdown", (event) => {
-  if (event.pointerType !== "mouse" || zoom.scale <= 1.01) return;
-  gesture.mode = "mouse-pan";
-  gesture.lastX = event.clientX;
-  gesture.lastY = event.clientY;
-  carousel.setPointerCapture(event.pointerId);
-});
-
-carousel.addEventListener("pointermove", (event) => {
-  if (gesture.mode !== "mouse-pan") return;
-  zoom.x += event.clientX - gesture.lastX;
-  zoom.y += event.clientY - gesture.lastY;
-  gesture.lastX = event.clientX;
-  gesture.lastY = event.clientY;
-  applyZoom(false);
-});
-
-carousel.addEventListener("pointerup", () => {
-  if (gesture.mode === "mouse-pan") gesture.mode = null;
-});
 
 // ---------- Inatividade: volta ao inicio para o proximo cliente ----------
 
@@ -474,17 +610,27 @@ function resetForNextGuest() {
     window.location.reload();
     return;
   }
-  closeIndex();
-  resetZoom(false);
-  goToSlide(0, false);
-  chipsNav.scrollTo({ left: 0 });
-  hint.classList.remove("is-hidden");
+  detailOverlay.hidden = true;
+  listOverlay.hidden = true;
+  reviewOverlay.hidden = true;
+  showScreen("welcome");
 }
 
 function restartIdleTimer() {
   clearTimeout(idleTimer);
   idleTimer = setTimeout(resetForNextGuest, idleMinutes * 60 * 1000);
+  if (choice.size) saveChoice();
 }
+
+// A lista so e apagada depois de muito tempo sem uso (mesa nova).
+setInterval(() => {
+  const saved = readSavedChoice();
+  if (choice.size && saved && Date.now() - saved.at > clearListMinutes * 60 * 1000) {
+    choice.clear();
+    saveChoice();
+    refreshChoiceUi();
+  }
+}, 60 * 1000);
 
 // ---------- Ecra sempre ligado e ecra inteiro ----------
 
@@ -500,75 +646,85 @@ async function keepScreenOn() {
   }
 }
 
-function canFullscreen() {
-  return document.fullscreenEnabled || document.webkitFullscreenEnabled;
-}
-
 function toggleFullscreen() {
   const element = document.documentElement;
-  const isFull = document.fullscreenElement || document.webkitFullscreenElement;
-  if (isFull) {
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
     (document.exitFullscreen || document.webkitExitFullscreen).call(document);
   } else {
     (element.requestFullscreen || element.webkitRequestFullscreen).call(element);
   }
 }
 
+// Carrega as fotos todas em segundo plano, para funcionar mesmo sem Wi-Fi.
+function preloadPhotos() {
+  const urls = [
+    ...categories.map((category) => `assets/capas/${category.cover}`),
+    ...[...itemsById.values()].map(photoUrl).filter(Boolean)
+  ];
+  let index = 0;
+  const next = () => {
+    if (index >= urls.length) return;
+    const image = new Image();
+    image.onload = image.onerror = () => setTimeout(next, 120);
+    image.src = urls[index];
+    index += 1;
+  };
+  setTimeout(next, 1500);
+}
+
 // ---------- Arranque ----------
 
-createSlides();
-createChips();
-createIndex();
-updatePerView();
-updateUi(0);
+loadChoice();
+buildHome();
+buildTabs();
+refreshChoiceUi();
+showScreen("welcome");
 restartIdleTimer();
-window.addEventListener("load", preloadRemaining, { once: true });
+window.addEventListener("load", preloadPhotos, { once: true });
 
-if (canFullscreen()) fullscreenButton.hidden = false;
+if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
+  document.querySelectorAll('[data-action="fullscreen"]').forEach((button) => (button.hidden = false));
+}
 
-nextButton.addEventListener("click", () => goToSlide(currentIndex + perView));
-previousButton.addEventListener("click", () => goToSlide(currentIndex - perView));
-zoomResetButton.addEventListener("click", () => resetZoom(true));
-carousel.addEventListener("scroll", onScroll, { passive: true });
+screens.welcome.addEventListener("click", () => showScreen("home"));
 
 document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-action]");
   if (!button) return;
   const action = button.dataset.action;
-  if (action === "home") goToSlide(0);
-  if (action === "index") openIndex();
-  if (action === "close-index") closeIndex();
+  if (action === "home") showScreen("home");
+  if (action === "welcome") showScreen("welcome");
+  if (action === "open-list") openList();
+  if (action === "close-list") closeList();
+  if (action === "close-detail") closeDetail();
+  if (action === "detail-prev") moveDetail(-1);
+  if (action === "detail-next") moveDetail(1);
+  if (action === "close-review") closeReview();
   if (action === "fullscreen") toggleFullscreen();
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    if (!indexPanel.hidden) closeIndex();
-    else resetZoom(true);
+    if (!reviewOverlay.hidden) closeReview();
+    else if (!listOverlay.hidden) closeList();
+    else if (!detailOverlay.hidden) closeDetail();
+    else if (currentScreen === "category") showScreen("home");
   }
-  if (!indexPanel.hidden) return;
-  if (event.key === "ArrowRight" || event.key === "PageDown") goToSlide(currentIndex + perView);
-  if (event.key === "ArrowLeft" || event.key === "PageUp") goToSlide(currentIndex - perView);
-  if (event.key === "Home") goToSlide(0);
+  if (!detailOverlay.hidden && event.key === "ArrowRight") moveDetail(1);
+  if (!detailOverlay.hidden && event.key === "ArrowLeft") moveDetail(-1);
 });
 
-["pointerdown", "touchstart", "keydown", "wheel"].forEach((type) => {
-  document.addEventListener(type, restartIdleTimer, { passive: true });
+["pointerdown", "touchstart", "keydown", "wheel", "scroll"].forEach((type) => {
+  document.addEventListener(type, restartIdleTimer, { passive: true, capture: true });
 });
 
 document.addEventListener("pointerdown", keepScreenOn, { passive: true });
 document.addEventListener("visibilitychange", keepScreenOn);
-
-let resizeFrame;
 window.addEventListener("resize", () => {
-  cancelAnimationFrame(resizeFrame);
-  resizeFrame = requestAnimationFrame(() => {
-    updatePerView();
-    goToSlide(currentIndex, false);
-  });
+  if (embersFrame) resizeEmbers();
 });
 
-// Impede o zoom da pagina inteira (o zoom e feito so na imagem do cardapio).
+// Impede o zoom da pagina inteira com dois dedos.
 document.addEventListener(
   "touchmove",
   (event) => {

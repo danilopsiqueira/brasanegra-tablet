@@ -1,45 +1,48 @@
 # Cardápio digital Brasa Negra (tablet)
 
-Cardápio para os clientes consultarem no tablet da mesa. As páginas continuam a ser
-as imagens feitas no Canva; este site só trata da experiência de navegação.
+Cardápio para os clientes consultarem no tablet da mesa.
 
-## O que o cliente tem
+## Como o cliente usa
 
-- **Categorias no topo** (Entradas, Carnes, Vinhos…): um toque e vai direto à secção.
-- **Índice** com miniaturas de todas as páginas.
-- **Ampliar**: toque duas vezes ou faça pinça para ler os preços; arraste para mover;
-  botão "Reduzir" para voltar.
-- **Tablet deitado**: mostra duas páginas lado a lado, como um livro.
-- **Volta sozinho ao início** após 2 minutos sem uso, pronto para o próximo cliente.
-- **Funciona sem Wi-Fi** depois de aberto uma vez (fica guardado no tablet).
-- **Ecrã sempre ligado** enquanto o cardápio está aberto (nos navegadores que permitem).
-- Imagens leves (WebP): abre muito mais rápido; ao ampliar carrega a imagem original.
+1. **Boas-vindas**: ecrã com brasas a subir e um botão grande "Toque para ver o cardápio".
+2. **Categorias com foto**: Entradas, Carnes, Peixes, Bebidas, Vinhos…, mais "Avalie-nos".
+3. **Pratos**: cada prato com foto e preço. Tocar no prato abre-o em grande
+   (com o que acompanha, notas e preço); deslizar o dedo passa ao prato seguinte.
+4. **A minha escolha**: o botão **+ Juntar** guarda o prato numa lista, com quantidades
+   e total estimado. No fim, o cliente mostra a lista ao empregado.
+
+Também:
+- Volta ao ecrã de boas-vindas depois de 2 minutos sem uso.
+- A lista "A minha escolha" é apagada depois de 20 minutos sem uso (mesa nova).
+- Funciona sem Wi-Fi depois de aberto uma vez, e mantém o ecrã ligado.
+- No fim de cada categoria há um botão para passar à seguinte.
 
 ## Atualizar o cardápio
 
-1. Exporte a página do Canva em JPG com uma data nova no nome, ex.: `carnes-20261101.jpg`.
-2. Coloque o ficheiro em `assets/`.
-3. Em `menu-data.js`, troque o nome antigo pelo novo (ou acrescente uma linha nova).
-4. Gere as versões leves (opcional, mas recomendado):
-   ```
-   pip install pillow
-   python3 tools/otimizar-imagens.py
-   ```
-   Se não fizer este passo, o site usa a imagem original (funciona, só mais lento).
-5. Publique (Netlify). Os tablets apanham a versão nova sozinhos na próxima vez que
-   voltarem ao início depois de 1 hora ligados, ou ao recarregar a página.
+Tudo está em **`menu-data.js`**:
 
-Em `menu-data.js` também pode mudar quanto tempo sem uso até voltar ao início
-(`MENU_IDLE_MINUTES`).
+- **Mudar um preço**: altere o número (`price: 25.90`) e publique.
+- **Tirar um prato**: apague a linha dele.
+- **Acrescentar um prato**: copie uma linha parecida e mude nome, preço e foto.
+- **Descrição**: acrescente `desc: "Corte nobre grelhado na brasa"` à linha do prato.
+- **Selo**: acrescente `tag: "Mais pedido"` ou `tag: "Sugestão do chef"`.
+
+### Fotos
+
+- As fotos atuais foram recortadas das páginas do Canva (`assets/produtos/`) e já trazem
+  o nome e o preço escritos. **Se mudar um preço, mude também a foto** (ou passe a usar
+  uma foto real, abaixo), senão a foto mostra o preço antigo.
+- **Fotos reais** (recomendado): coloque a foto em `assets/fotos/` e escreva
+  `photo: "fotos/picanha.jpg"`. Como a foto real não tem texto, o nome e o preço passam
+  a aparecer automaticamente por baixo da foto, sempre certos.
+- As capas das categorias estão em `assets/capas/`.
 
 ## Preparar o tablet
 
 - **Android (Chrome)**: abrir o site → menu ⋮ → "Adicionar ao ecrã principal".
-  Abre em ecrã inteiro. Para bloquear o tablet no cardápio use "Afixação de ecrã"
-  (Definições → Segurança → Afixar aplicação).
-- **iPad (Safari)**: Partilhar → "Adicionar ao ecrã principal". Para bloquear no
-  cardápio use "Acesso Guiado" (Definições → Acessibilidade → Acesso Guiado) e
-  desligue o bloqueio automático do ecrã.
+  Para prender o tablet no cardápio: Definições → Segurança → "Afixar aplicação".
+- **iPad (Safari)**: Partilhar → "Adicionar ao ecrã principal". Para prender no
+  cardápio: Definições → Acessibilidade → "Acesso Guiado"; desligue o bloqueio automático.
 
 ## Testar no computador
 

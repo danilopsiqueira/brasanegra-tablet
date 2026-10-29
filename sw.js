@@ -1,8 +1,8 @@
 // Guarda o cardapio no tablet para continuar a funcionar se o Wi-Fi falhar.
 // Paginas/codigo: tenta sempre a versao mais recente; sem rede usa a guardada.
-// Imagens: os nomes levam a data, por isso a copia guardada nunca fica errada.
+// Imagens: mostra logo a guardada e atualiza-a em segundo plano.
 
-const SHELL_CACHE = "brasa-shell-v2";
+const SHELL_CACHE = "brasa-shell-v3";
 const IMAGE_CACHE = "brasa-images-v1";
 const SHELL_FILES = ["./", "index.html", "style.css", "menu-data.js", "script.js", "manifest.webmanifest"];
 
@@ -41,16 +41,22 @@ function networkFirst(request) {
   );
 }
 
-function cacheFirst(request) {
+function staleWhileRevalidate(event) {
+  const { request } = event;
   return caches.open(IMAGE_CACHE).then((cache) =>
-    cache.match(request).then(
-      (cached) =>
-        cached ||
-        fetch(request).then((response) => {
+    cache.match(request).then((cached) => {
+      const network = fetch(request)
+        .then((response) => {
           if (response.ok) cache.put(request, response.clone());
           return response;
         })
-    )
+        .catch(() => cached);
+      if (cached) {
+        event.waitUntil(network);
+        return cached;
+      }
+      return network;
+    })
   );
 }
 
@@ -61,7 +67,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.destination === "image" || url.pathname.startsWith("/assets/")) {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(staleWhileRevalidate(event));
   } else {
     event.respondWith(networkFirst(request));
   }

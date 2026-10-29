@@ -8,11 +8,11 @@
     Cache-Control = "public, max-age=0, must-revalidate"
     X-Content-Type-Options = "nosniff"
 
-# Imagens levam a data no nome, por isso podem ficar guardadas muito tempo.
+# Imagens: guardadas 1 hora (uma foto trocada com o mesmo nome aparece depressa).
 [[headers]]
   for = "/assets/*"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+    Cache-Control = "public, max-age=3600"
 
 [[headers]]
   for = "/sw.js"

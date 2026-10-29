@@ -26,69 +26,130 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="assets/icons/icon-512.png">
-    <link rel="preload" href="assets/web/inicio-20260824.webp" as="image" type="image/webp">
+    <link rel="preload" href="assets/inicio-20260824.jpg" as="image">
     <title>Brasa Negra | Cardápio Digital</title>
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <main class="menu-app" aria-label="Cardápio digital Brasa Negra">
-      <header class="topbar">
-        <button class="brand" type="button" data-action="home" aria-label="Voltar ao início">
-          <span class="brand__name">Brasa Negra</span>
-          <span class="brand__sub">Cardápio</span>
+    <main class="app" aria-label="Cardápio digital Brasa Negra">
+      <!-- Ecra de boas-vindas -->
+      <section id="welcome" class="screen welcome is-active" aria-label="Boas-vindas">
+        <div class="welcome__bg" aria-hidden="true"></div>
+        <canvas id="embers" class="welcome__embers" aria-hidden="true"></canvas>
+        <img class="welcome__poster" src="assets/inicio-20260824.jpg" alt="Seja bem-vindo ao Brasa Negra">
+        <button class="welcome__start" type="button" data-action="start">
+          Toque para ver o cardápio
         </button>
+      </section>
 
-        <nav id="chips" class="chips" aria-label="Categorias"></nav>
-
-        <div class="topbar__actions">
-          <button class="icon-button" type="button" data-action="index" aria-label="Ver todas as páginas">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="3" y="3" width="7" height="7" rx="1.5" />
-              <rect x="14" y="3" width="7" height="7" rx="1.5" />
-              <rect x="3" y="14" width="7" height="7" rx="1.5" />
-              <rect x="14" y="14" width="7" height="7" rx="1.5" />
-            </svg>
-            <span class="icon-button__label">Índice</span>
+      <!-- Inicio: categorias -->
+      <section id="home" class="screen home" aria-label="Categorias">
+        <header class="topbar">
+          <button class="brand" type="button" data-action="welcome" aria-label="Ecrã de boas-vindas">
+            <span class="brand__name">Brasa Negra</span>
+            <span class="brand__sub">by Touro e Fogo</span>
           </button>
-          <button class="icon-button" type="button" data-action="fullscreen" aria-label="Ecrã inteiro" hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
-            </svg>
-          </button>
+          <div class="topbar__actions">
+            <button class="pill-button" type="button" data-action="open-list">
+              <span class="heart" aria-hidden="true"></span>
+              <span class="pill-button__label">A minha escolha</span>
+              <span class="count-badge" data-count hidden></span>
+            </button>
+            <button class="icon-button" type="button" data-action="fullscreen" aria-label="Ecrã inteiro" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+            </button>
+          </div>
+        </header>
+        <div class="home__scroll scroll-area">
+          <h1 class="home__title">O que lhe apetece hoje?</h1>
+          <p class="home__subtitle">Toque numa categoria para ver os pratos</p>
+          <div id="category-grid" class="category-grid"></div>
         </div>
-      </header>
+      </section>
 
-      <div class="stage">
-        <section id="carousel" class="carousel" aria-live="polite"></section>
+      <!-- Categoria: pratos -->
+      <section id="category" class="screen category" aria-label="Pratos">
+        <header class="topbar topbar--category">
+          <button class="back-button" type="button" data-action="home">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+            Início
+          </button>
+          <nav id="tabs" class="tabs" aria-label="Categorias"></nav>
+          <div class="topbar__actions">
+            <button class="pill-button" type="button" data-action="open-list">
+              <span class="heart" aria-hidden="true"></span>
+              <span class="pill-button__label">A minha escolha</span>
+              <span class="count-badge" data-count hidden></span>
+            </button>
+          </div>
+        </header>
+        <div id="category-scroll" class="category__scroll scroll-area">
+          <div id="category-content" class="category__content"></div>
+        </div>
+      </section>
 
-        <button class="nav-arrow nav-arrow--left" type="button" aria-label="Página anterior">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-        </button>
-        <button class="nav-arrow nav-arrow--right" type="button" aria-label="Próxima página">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
-        </button>
+      <!-- Barra "A minha escolha" -->
+      <button id="list-bar" class="list-bar" type="button" data-action="open-list" hidden>
+        <span class="heart" aria-hidden="true"></span>
+        <span class="list-bar__text">A minha escolha</span>
+        <span class="list-bar__count" id="list-bar-count"></span>
+        <span class="list-bar__total" id="list-bar-total"></span>
+        <span class="list-bar__cta">Ver</span>
+      </button>
 
-        <button class="zoom-reset" type="button" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M8 11h6M16 16l4.5 4.5" /></svg>
-          Reduzir
-        </button>
-      </div>
-
-      <footer class="bottombar">
-        <p class="hint" id="hint">Deslize para o lado · toque 2× para ampliar</p>
-        <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
-        <p class="counter" id="counter" aria-live="polite"></p>
-      </footer>
-
-      <div id="index-panel" class="index-panel" role="dialog" aria-modal="true" aria-label="Todas as páginas" hidden>
-        <div class="index-panel__head">
-          <h2>Todas as páginas</h2>
-          <button class="icon-button" type="button" data-action="close-index" aria-label="Fechar">
+      <!-- Detalhe do prato -->
+      <div id="detail" class="overlay" hidden>
+        <div class="overlay__backdrop" data-action="close-detail"></div>
+        <article class="detail" role="dialog" aria-modal="true" aria-labelledby="detail-name">
+          <button class="close-button" type="button" data-action="close-detail" aria-label="Fechar">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
-        </div>
-        <div id="index-grid" class="index-panel__grid"></div>
+          <div class="detail__media" id="detail-media"></div>
+          <div class="detail__info">
+            <p class="detail__section" id="detail-section"></p>
+            <h2 class="detail__name" id="detail-name"></h2>
+            <p class="detail__price" id="detail-price"></p>
+            <p class="detail__desc" id="detail-desc"></p>
+            <p class="detail__note" id="detail-note"></p>
+            <div class="detail__actions" id="detail-actions"></div>
+            <p class="detail__position" id="detail-position"></p>
+          </div>
+          <button class="detail__nav detail__nav--prev" type="button" data-action="detail-prev" aria-label="Prato anterior">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+          </button>
+          <button class="detail__nav detail__nav--next" type="button" data-action="detail-next" aria-label="Próximo prato">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </article>
       </div>
+
+      <!-- A minha escolha -->
+      <div id="list" class="overlay overlay--side" hidden>
+        <div class="overlay__backdrop" data-action="close-list"></div>
+        <aside class="list-panel" role="dialog" aria-modal="true" aria-labelledby="list-title">
+          <header class="list-panel__head">
+            <h2 id="list-title">A minha escolha</h2>
+            <button class="close-button close-button--inline" type="button" data-action="close-list" aria-label="Fechar">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
+          </header>
+          <div id="list-items" class="list-panel__items scroll-area"></div>
+          <footer class="list-panel__foot" id="list-foot"></footer>
+        </aside>
+      </div>
+
+      <!-- Avaliacao -->
+      <div id="review" class="overlay" hidden>
+        <div class="overlay__backdrop" data-action="close-review"></div>
+        <div class="review" role="dialog" aria-modal="true" aria-label="Avalie-nos">
+          <button class="close-button" type="button" data-action="close-review" aria-label="Fechar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+          <img id="review-image" alt="Avalie-nos e ganhe um brigadeiro: aponte a câmara para o código QR">
+        </div>
+      </div>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
     </main>
 
     <script src="menu-data.js"></script>
