@@ -175,6 +175,15 @@
         </div>
       </div>
 
+      <!-- Foto em ecra inteiro -->
+      <div id="photo-viewer" class="photo-viewer" role="dialog" aria-modal="true" aria-label="Foto em grande" hidden>
+        <img id="photo-viewer-image" alt="">
+        <p class="photo-viewer__caption" id="photo-viewer-caption"></p>
+        <button class="close-button" type="button" data-action="close-photo" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
     </main>
 

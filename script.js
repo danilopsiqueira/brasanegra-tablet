@@ -307,6 +307,8 @@ function productCard(item) {
 
 function openCategory(category) {
   categoryContent.replaceChildren();
+  // As carnes sao a estrela da casa: cartoes maiores.
+  categoryContent.classList.toggle("category__content--large", category.id === "carnes");
 
   const head = el("div", "category__head");
   const cover = el("img", "category__cover");
@@ -387,10 +389,15 @@ function renderDetail() {
     const image = el("img", "detail__photo");
     image.src = url;
     image.alt = item.name;
-    media.appendChild(image);
+    const zoom = el("button", "detail__zoom");
+    zoom.type = "button";
+    zoom.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>Ver em grande';
+    media.append(image, zoom);
+    media.onclick = () => openPhoto(item);
   } else {
     media.classList.add("detail__media--text");
     media.textContent = item.name;
+    media.onclick = null;
   }
 
   $("#detail-section").textContent = [item.category.name, item.section.title].filter(Boolean).join(" · ");
@@ -494,6 +501,23 @@ $(".detail").addEventListener("touchend", (event) => {
   swipeStart = null;
   if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) moveDetail(dx < 0 ? 1 : -1);
 });
+
+// ---------- Foto em ecra inteiro ----------
+
+const photoViewer = $("#photo-viewer");
+
+function openPhoto(item) {
+  $("#photo-viewer-image").src = photoUrl(item);
+  $("#photo-viewer-image").alt = item.name;
+  $("#photo-viewer-caption").textContent = `${item.name} · ${priceText(item)}`;
+  photoViewer.hidden = false;
+}
+
+function closePhoto() {
+  photoViewer.hidden = true;
+}
+
+photoViewer.addEventListener("click", closePhoto);
 
 // ---------- Lista ----------
 
@@ -667,6 +691,7 @@ function resetForNextGuest() {
   detailOverlay.hidden = true;
   listOverlay.hidden = true;
   reviewOverlay.hidden = true;
+  photoViewer.hidden = true;
   showScreen("welcome");
 }
 
@@ -756,12 +781,14 @@ document.addEventListener("click", (event) => {
   if (action === "detail-prev") moveDetail(-1);
   if (action === "detail-next") moveDetail(1);
   if (action === "close-review") closeReview();
+  if (action === "close-photo") closePhoto();
   if (action === "fullscreen") toggleFullscreen();
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    if (!reviewOverlay.hidden) closeReview();
+    if (!photoViewer.hidden) closePhoto();
+    else if (!reviewOverlay.hidden) closeReview();
     else if (!listOverlay.hidden) closeList();
     else if (!detailOverlay.hidden) closeDetail();
     else if (currentScreen === "category") showScreen("home");

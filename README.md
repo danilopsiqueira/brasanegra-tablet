@@ -9,6 +9,7 @@ Cardápio para os clientes consultarem no tablet da mesa.
    com as carnes, e as categorias com foto (mais "Avalie-nos").
 3. **Pratos**: cada prato com foto e preço. Tocar no prato abre-o em grande
    (descrição, o que acompanha, preço e uma sugestão de vinho); deslizar passa ao seguinte.
+   "Ver em grande" mostra a foto no ecrã inteiro.
 4. **A minha escolha**: o botão **+ Juntar** guarda o prato numa lista, com quantidades
    e total estimado. No fim, o cliente mostra a lista ao empregado.
 
@@ -39,6 +40,8 @@ Tudo está em **`menu-data.js`**:
   `assets/fotos/` e troque o `photo`.
 - Algumas fotos limpas foram obtidas apagando o texto das imagens do Canva (copos de vinho,
   charutos, pratos executivos…). Se notar alguma mancha, troque por uma foto nova.
+- As fotos levaram um tratamento de cor (mais quentes, com mais contraste e nitidez).
+  Fotos novas que acrescentar entram como estão.
 - **Capas** das categorias e a foto grande do início: `assets/capas/`.
 - As **sugestões de vinho** (`pairing`) e as **descrições** (`desc`) foram escritas como ponto
   de partida: ajuste à vontade.
