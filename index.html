@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="utf-8">
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    >
+    <meta
+      name="description"
+      content="Cardápio digital do restaurante Brasa Negra, otimizado para tablets, telemóveis e computadores."
+    >
+    <meta name="robots" content="index,follow">
+    <meta name="theme-color" content="#050403">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Brasa Negra">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="pt_PT">
+    <meta property="og:title" content="Cardápio Brasa Negra">
+    <meta property="og:description" content="Cardápio digital do restaurante Brasa Negra.">
+    <meta property="og:url" content="https://cardapio.brasanegra.pt/">
+    <meta property="og:image" content="https://cardapio.brasanegra.pt/assets/inicio-20260824.jpg">
+    <link rel="canonical" href="https://cardapio.brasanegra.pt/">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="assets/icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="assets/icons/icon-512.png">
+    <link rel="preload" href="assets/web/inicio-20260824.webp" as="image" type="image/webp">
+    <title>Brasa Negra | Cardápio Digital</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="menu-app" aria-label="Cardápio digital Brasa Negra">
+      <header class="topbar">
+        <button class="brand" type="button" data-action="home" aria-label="Voltar ao início">
+          <span class="brand__name">Brasa Negra</span>
+          <span class="brand__sub">Cardápio</span>
+        </button>
+
+        <nav id="chips" class="chips" aria-label="Categorias"></nav>
+
+        <div class="topbar__actions">
+          <button class="icon-button" type="button" data-action="index" aria-label="Ver todas as páginas">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+            <span class="icon-button__label">Índice</span>
+          </button>
+          <button class="icon-button" type="button" data-action="fullscreen" aria-label="Ecrã inteiro" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="stage">
+        <section id="carousel" class="carousel" aria-live="polite"></section>
+
+        <button class="nav-arrow nav-arrow--left" type="button" aria-label="Página anterior">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <button class="nav-arrow nav-arrow--right" type="button" aria-label="Próxima página">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+        </button>
+
+        <button class="zoom-reset" type="button" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M8 11h6M16 16l4.5 4.5" /></svg>
+          Reduzir
+        </button>
+      </div>
+
+      <footer class="bottombar">
+        <p class="hint" id="hint">Deslize para o lado · toque 2× para ampliar</p>
+        <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+        <p class="counter" id="counter" aria-live="polite"></p>
+      </footer>
+
+      <div id="index-panel" class="index-panel" role="dialog" aria-modal="true" aria-label="Todas as páginas" hidden>
+        <div class="index-panel__head">
+          <h2>Todas as páginas</h2>
+          <button class="icon-button" type="button" data-action="close-index" aria-label="Fechar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <div id="index-grid" class="index-panel__grid"></div>
+      </div>
+    </main>
+
+    <script src="menu-data.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
