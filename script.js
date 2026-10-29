@@ -64,9 +64,11 @@ function photoUrl(item) {
 }
 
 // Versao em alta resolucao (so para o detalhe e o ecra inteiro).
+const hdPhotos = new Set(window.MENU_HD_PHOTOS || []);
+
 function hdPhotoUrl(item) {
-  if (!item.photo || !item.photo.startsWith("fotos/")) return photoUrl(item);
-  return `assets/fotos/hd/${item.photo.slice("fotos/".length)}`;
+  const name = item.photo && item.photo.startsWith("fotos/") ? item.photo.slice("fotos/".length) : null;
+  return name && hdPhotos.has(name) ? `assets/fotos/hd/${name}` : photoUrl(item);
 }
 
 // Mostra a foto em alta resolucao; se ainda nao existir, usa a normal.
@@ -1032,7 +1034,7 @@ function preloadPhotos() {
   const urls = [
     ...categories.map((category) => `assets/capas/${category.cover}`),
     ...[...itemsById.values()].map(photoUrl).filter(Boolean),
-    ...[...itemsById.values()].filter((item) => item.photo && item.photo.startsWith("fotos/")).map(hdPhotoUrl)
+    ...[...itemsById.values()].map(hdPhotoUrl).filter((url) => url && url.includes("/hd/"))
   ];
   let index = 0;
   const next = () => {

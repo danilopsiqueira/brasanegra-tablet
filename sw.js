@@ -4,7 +4,7 @@
 
 const SHELL_CACHE = "brasa-shell-v9";
 const IMAGE_CACHE = "brasa-images-v2";
-const SHELL_FILES = ["./", "index.html", "fonts.css", "style.css", "menu-data.js", "script.js", "manifest.webmanifest"];
+const SHELL_FILES = ["./", "index.html", "fonts.css", "style.css", "menu-data.js", "assets/fotos/hd/lista.js", "script.js", "manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_FILES)));
